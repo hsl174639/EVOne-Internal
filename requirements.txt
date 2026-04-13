@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pandas
+openpyxl
+xlsxwriter
+reportlab
+python-multipart
+python-jose[cryptography]
+dotenv

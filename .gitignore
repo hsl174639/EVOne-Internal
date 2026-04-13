@@ -1,0 +1,63 @@
+# ========================
+# 1. 安全与密钥 (最重要！)
+# ========================
+.env
+
+# ========================
+# 2. Python 运行环境与缓存
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ========================
+# 3. 虚拟环境 (虚拟环境非常大，不能传到 Git)
+# ========================
+venv/
+.venv/
+env/
+ENV/
+
+# ========================
+# 4. 业务产生的临时文件 (防止测试发票被传到网上)
+# ========================
+*.zip
+*.pdf
+*.csv
+*.xlsx
+*.xls
+# 如果测试时生成了目录，也可以忽略
+*月/
+
+# ========================
+# 5. 操作系统与编辑器缓存
+# ========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
