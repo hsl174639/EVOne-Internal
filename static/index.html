@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EVOne 内部操作系统</title>
+    <title>EVOne Internal Operations System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { theme: { extend: { colors: { evgreen: '#00ad5f', sidebar: '#111827' } } } }
@@ -13,23 +13,24 @@
     <style>
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        td[contenteditable="true"] { transition: all 0.2s; }
-        td[contenteditable="true"]:hover { background-color: #f3f4f6; cursor: text; outline: 1px dashed #00ad5f; }
+        td[contenteditable="true"], td input { transition: all 0.2s; }
         td[contenteditable="true"]:focus { background-color: #fff; outline: 2px solid #00ad5f; }
-        /* 隐藏滚动条但保留滚动功能，让表格更整洁 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .editing-row { background-color: #f0fdf4 !important; outline: 1px solid #00ad5f; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden flex font-sans">
 
+    <datalist id="sysCompanyList"></datalist>
+
     <div id="loginOverlay" class="fixed inset-0 bg-gray-900 z-50 flex justify-center items-center">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-96">
-            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6 text-evgreen">EVOne 登录</h2>
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6 text-evgreen">EVOne Login</h2>
             <div class="space-y-4">
-                <input type="email" id="email" placeholder="工作邮箱" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-evgreen">
-                <input type="password" id="password" placeholder="密码" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-evgreen">
-                <button onclick="login()" class="w-full bg-evgreen hover:bg-green-600 text-white font-bold py-2 rounded-lg">登 录</button>
+                <input type="email" id="email" placeholder="Work Email" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-evgreen">
+                <input type="password" id="password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-evgreen">
+                <button onclick="login()" class="w-full bg-evgreen hover:bg-green-600 text-white font-bold py-2 rounded-lg transition">Sign In</button>
             </div>
         </div>
     </div>
@@ -42,18 +43,18 @@
         <nav class="flex-1 py-6 px-3 space-y-2">
             <a href="#" class="flex items-center px-4 py-3 bg-gray-800 text-white rounded-lg group">
                 <svg class="w-5 h-5 text-evgreen mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <span class="font-medium">账单结算 (Invoice)</span>
+                <span class="font-medium">Billing Settlement</span>
             </a>
         </nav>
         <div class="p-4 border-t border-gray-800 flex items-center justify-between bg-gray-900">
             <div class="flex items-center">
-                <div class="w-10 h-10 rounded-full bg-evgreen flex items-center justify-center text-white font-bold text-lg shadow-inner">U</div>
+                <div class="w-10 h-10 rounded-full bg-evgreen flex items-center justify-center text-white font-bold text-lg" id="avatarIcon">U</div>
                 <div class="ml-3">
-                    <p id="userNameDisplay" class="text-sm font-medium text-white truncate w-24">加载中...</p>
+                    <p id="userNameDisplay" class="text-sm font-medium text-white truncate w-24">Loading...</p>
                     <p class="text-xs text-gray-400">Authorized</p>
                 </div>
             </div>
-            <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition" title="退出登录">
+            <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition" title="Logout">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
             </button>
         </div>
@@ -61,194 +62,284 @@
 
     <main class="flex-1 flex flex-col bg-white overflow-hidden">
         <header class="bg-white border-b border-gray-200 px-8 pt-6 z-10 shadow-sm">
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">月度结算流程</h1>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Monthly Billing Workflow</h1>
             <div class="flex space-x-8 border-b border-gray-200">
-                <button onclick="switchTab('tab1')" id="btn-tab1" class="pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm transition">1. 交易数据导入</button>
-                <button onclick="switchTab('tab2')" id="btn-tab2" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm transition">2. 费率与 CRM 映射</button>
-                <button onclick="switchTab('tab3')" id="btn-tab3" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm transition">3. 结算与下载</button>
+                <button onclick="switchTab('tab1')" id="btn-tab1" class="pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm">1. Data Import</button>
+                <button onclick="switchTab('tab2')" id="btn-tab2" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm">2. Tariff & CRM Mapping</button>
+                <button onclick="switchTab('tab3')" id="btn-tab3" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm">3. Execution & Export</button>
             </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-8 bg-gray-50 no-scrollbar">
-            
             <div id="tab1" class="tab-content active space-y-6 max-w-4xl mx-auto">
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 class="text-xl font-bold mb-2 text-gray-800">上传原始交易记录</h3>
-                    <p class="text-sm text-gray-500 mb-8">请上传当月最新的 SP 与 GoParkin 流水报表，每次生成账单必须重新上传。</p>
+                    <h3 class="text-xl font-bold mb-2 text-gray-800">Upload Transaction Logs</h3>
+                    <p class="text-sm text-gray-500 mb-8">Please provide the raw transaction reports for the current billing cycle (SP & GoParkin).</p>
                     <div class="grid grid-cols-2 gap-8">
                         <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-evgreen hover:bg-green-50 transition group cursor-pointer" onclick="document.getElementById('spTxFile').click()">
                             <div class="w-12 h-12 bg-green-100 text-evgreen rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                             </div>
-                            <span class="text-evgreen font-bold text-lg block mb-1">选择 SP 报表</span>
-                            <input type="file" class="hidden" accept=".xlsx,.csv" id="spTxFile">
-                            <p class="text-sm text-gray-400 truncate px-2" id="spTxName">未选择文件</p>
+                            <span class="text-evgreen font-bold text-lg block mb-1">SP Report</span>
+                            <input type="file" class="hidden" id="spTxFile" accept=".xlsx,.xls,.csv">
+                            <p class="text-sm text-gray-400 truncate px-2" id="spTxName">No file selected</p>
                         </div>
                         <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-evgreen hover:bg-green-50 transition group cursor-pointer" onclick="document.getElementById('gpTxFile').click()">
                             <div class="w-12 h-12 bg-green-100 text-evgreen rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                             </div>
-                            <span class="text-evgreen font-bold text-lg block mb-1">选择 GP 报表</span>
-                            <input type="file" class="hidden" accept=".xlsx,.csv" id="gpTxFile">
-                            <p class="text-sm text-gray-400 truncate px-2" id="gpTxName">未选择文件</p>
+                            <span class="text-evgreen font-bold text-lg block mb-1">GP Report</span>
+                            <input type="file" class="hidden" id="gpTxFile" accept=".xlsx,.xls,.csv">
+                            <p class="text-sm text-gray-400 truncate px-2" id="gpTxName">No file selected</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div id="tab2" class="tab-content max-w-5xl mx-auto">
-                
                 <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
                     <div>
-                        <h2 class="text-lg font-bold text-gray-800">系统映射配置区</h2>
-                        <p class="text-sm text-gray-500 mt-1">在下方切换不同的表格进行编辑，所有修改在点击“生成”时会自动生效。</p>
+                        <h2 class="text-lg font-bold text-gray-800">System Mapping Console</h2>
+                        <p class="text-sm text-gray-500 mt-1">Manage corporate rates and vehicle-driver associations. (Changes auto-sync across sessions)</p>
                     </div>
-                    <button onclick="saveAllToSupabase(this)" class="bg-gray-800 text-white py-2.5 px-6 rounded-xl font-bold shadow-md hover:bg-black transition flex items-center">
+                    <button onclick="saveAllToSupabase(this)" class="bg-sidebar text-white py-2.5 px-6 rounded-xl font-bold shadow-md hover:bg-black transition flex items-center">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                        备份配置至数据库
+                        Sync to Cloud
                     </button>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="flex border-b border-gray-200 bg-gray-50 px-2 pt-2">
-                        <button onclick="switchSubTab('rate')" id="subbtn-rate" class="px-6 py-3 font-bold text-sm text-evgreen bg-white border-t border-l border-r border-gray-200 rounded-t-lg -mb-px">
-                            1. 阶梯费率配置
-                        </button>
-                        <button onclick="switchSubTab('gp')" id="subbtn-gp" class="px-6 py-3 font-medium text-sm text-gray-500 hover:text-gray-700 transition rounded-t-lg">
-                            2. GoParkin 车辆映射
-                        </button>
-                        <button onclick="switchSubTab('sp')" id="subbtn-sp" class="px-6 py-3 font-medium text-sm text-gray-500 hover:text-gray-700 transition rounded-t-lg">
-                            3. SP 司机映射
-                        </button>
+                        <button onclick="switchSubTab('rate')" id="subbtn-rate" class="px-6 py-3 font-bold text-sm text-evgreen bg-white border-t border-l border-r border-gray-200 rounded-t-lg -mb-px">1. Tiered Tariff</button>
+                        <button onclick="switchSubTab('gp')" id="subbtn-gp" class="px-6 py-3 font-medium text-sm text-gray-500 rounded-t-lg">2. GP Fleet (CRM)</button>
+                        <button onclick="switchSubTab('sp')" id="subbtn-sp" class="px-6 py-3 font-medium text-sm text-gray-500 rounded-t-lg">3. SP Drivers (CRM)</button>
                     </div>
 
                     <div id="subtab-rate" class="block">
-                        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-100">
-                            <span class="text-xs text-gray-400">📝 点击单元格即可直接编辑内容</span>
-                            <label class="text-evgreen text-sm cursor-pointer font-bold hover:bg-green-50 px-3 py-1.5 rounded-lg transition border border-green-100 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                从 Excel 导入覆盖 <input type="file" class="hidden" accept=".xlsx,.csv" onchange="parseExcelToTable(event, 'rateTableBody', 'rate')">
-                            </label>
-                        </div>
                         <div class="max-h-[500px] overflow-y-auto no-scrollbar">
                             <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 shadow-sm">
-                                    <tr><th class="px-6 py-4 font-bold">Company (公司)</th><th class="px-6 py-4 font-bold">Base Rate ($)</th><th class="px-6 py-4 font-bold">Threshold (kWh)</th><th class="px-6 py-4 font-bold">Discounted ($)</th><th class="px-6 py-4 font-bold w-20">操作</th></tr>
+                                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 shadow-sm z-10">
+                                    <tr><th class="px-6 py-4">Company</th><th class="px-6 py-4">Base Rate ($)</th><th class="px-6 py-4">Threshold (kWh)</th><th class="px-6 py-4">Discounted ($)</th><th class="px-6 py-4 w-32">Action</th></tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100" id="rateTableBody">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-3 text-gray-800 font-medium" contenteditable="true">SingPost</td>
-                                        <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">0.55</td>
-                                        <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">1000</td>
-                                        <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">0.48</td>
-                                        <td class="px-6 py-3"><button onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs">删除</button></td>
-                                    </tr>
-                                </tbody>
+                                <tbody class="divide-y divide-gray-100" id="rateTableBody"></tbody>
                             </table>
                         </div>
-                        <div class="p-4 bg-gray-50 border-t border-gray-100">
-                            <button onclick="addRow('rateTableBody', 'rate')" class="text-sm text-evgreen font-bold flex items-center hover:text-green-700 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-                                <span class="text-lg mr-2 leading-none">+</span> 添加新公司费率
-                            </button>
+                        <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-between">
+                            <button onclick="addRow('rateTableBody', 'rate')" class="text-sm text-evgreen font-bold flex items-center bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">+ Add Company Rate</button>
                         </div>
                     </div>
 
                     <div id="subtab-gp" class="hidden">
-                        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-100">
-                            <span class="text-xs text-gray-400">📝 请将车牌与公司精确对应</span>
-                            <label class="text-evgreen text-sm cursor-pointer font-bold hover:bg-green-50 px-3 py-1.5 rounded-lg transition border border-green-100 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                从 Excel 导入覆盖 <input type="file" class="hidden" accept=".xlsx,.csv" onchange="parseExcelToTable(event, 'gpTableBody', 'gp')">
-                            </label>
+                        <div class="bg-white px-6 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                            <div class="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input type="text" id="searchGp" onkeyup="filterTable('gp')" placeholder="Search Plate / Company..." class="bg-transparent text-sm outline-none w-44 text-gray-700">
+                                <div class="h-4 border-r border-gray-300"></div>
+                                <select id="filterGpCompany" onchange="filterTable('gp')" class="bg-transparent text-sm outline-none text-gray-700 font-medium cursor-pointer w-40">
+                                    <option value="">All Companies</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <select id="batchGpCompany" class="px-3 py-1.5 border border-gray-300 rounded text-sm outline-none w-36">
+                                    <option value="">Select Target...</option>
+                                </select>
+                                <span class="text-gray-300">|</span>
+                                <button onclick="openBatchModal('gp')" class="text-sm font-bold text-blue-600 hover:text-blue-800 transition">Batch Add</button>
+                                <button onclick="openManageModal('gp')" class="text-sm font-bold text-evgreen hover:text-green-700 transition">Manage (Edit/Del)</button>
+                            </div>
                         </div>
-                        <div class="max-h-[500px] overflow-y-auto no-scrollbar">
+                        
+                        <div class="max-h-[450px] overflow-y-auto no-scrollbar">
                             <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 shadow-sm">
-                                    <tr><th class="px-6 py-4 font-bold">Vehicle No. (车牌号码)</th><th class="px-6 py-4 font-bold">Company (所属公司)</th><th class="px-6 py-4 font-bold w-20">操作</th></tr>
+                                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 shadow-sm z-10">
+                                    <tr><th class="px-6 py-4">Vehicle Plate No.</th><th class="px-6 py-4">Associated Company</th><th class="px-6 py-4 w-32">Action</th></tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100" id="gpTableBody">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-3 text-gray-800 font-medium tracking-wider" contenteditable="true">SGA1234A</td>
-                                        <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">SingPost</td>
-                                        <td class="px-6 py-3"><button onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs">删除</button></td>
-                                    </tr>
-                                </tbody>
+                                <tbody class="divide-y divide-gray-100" id="gpTableBody"></tbody>
                             </table>
                         </div>
                         <div class="p-4 bg-gray-50 border-t border-gray-100">
-                            <button onclick="addRow('gpTableBody', 'gp')" class="text-sm text-evgreen font-bold flex items-center hover:text-green-700 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-                                <span class="text-lg mr-2 leading-none">+</span> 添加 GP 车辆
-                            </button>
+                            <button onclick="addRow('gpTableBody', 'gp')" class="text-sm text-evgreen font-bold flex items-center bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">+ Add Single Vehicle</button>
                         </div>
                     </div>
 
                     <div id="subtab-sp" class="hidden">
-                        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-100">
-                            <span class="text-xs text-gray-400">📝 请将司机邮箱与公司精确对应</span>
-                            <label class="text-evgreen text-sm cursor-pointer font-bold hover:bg-green-50 px-3 py-1.5 rounded-lg transition border border-green-100 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                从 Excel 导入覆盖 <input type="file" class="hidden" accept=".xlsx,.csv" onchange="parseExcelToTable(event, 'spTableBody', 'sp')">
-                            </label>
+                        <div class="bg-white px-6 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                            <div class="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input type="text" id="searchSp" onkeyup="filterTable('sp')" placeholder="Search Email / Company..." class="bg-transparent text-sm outline-none w-44 text-gray-700">
+                                <div class="h-4 border-r border-gray-300"></div>
+                                <select id="filterSpCompany" onchange="filterTable('sp')" class="bg-transparent text-sm outline-none text-gray-700 font-medium cursor-pointer w-40">
+                                    <option value="">All Companies</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <select id="batchSpCompany" class="px-3 py-1.5 border border-gray-300 rounded text-sm outline-none w-36">
+                                    <option value="">Select Target...</option>
+                                </select>
+                                <span class="text-gray-300">|</span>
+                                <button onclick="openBatchModal('sp')" class="text-sm font-bold text-blue-600 hover:text-blue-800 transition">Batch Add</button>
+                                <button onclick="openManageModal('sp')" class="text-sm font-bold text-evgreen hover:text-green-700 transition">Manage (Edit/Del)</button>
+                            </div>
                         </div>
-                        <div class="max-h-[500px] overflow-y-auto no-scrollbar">
+
+                        <div class="max-h-[450px] overflow-y-auto no-scrollbar">
                             <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 shadow-sm">
-                                    <tr><th class="px-6 py-4 font-bold">Email (司机注册邮箱)</th><th class="px-6 py-4 font-bold">Company (所属公司)</th><th class="px-6 py-4 font-bold w-20">操作</th></tr>
+                                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 shadow-sm z-10">
+                                    <tr><th class="px-6 py-4">Driver Email</th><th class="px-6 py-4">Associated Company</th><th class="px-6 py-4 w-32">Action</th></tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100" id="spTableBody">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-3 text-gray-800 font-medium" contenteditable="true">driver@ninja.com</td>
-                                        <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">NinjaVan</td>
-                                        <td class="px-6 py-3"><button onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs">删除</button></td>
-                                    </tr>
-                                </tbody>
+                                <tbody class="divide-y divide-gray-100" id="spTableBody"></tbody>
                             </table>
                         </div>
                         <div class="p-4 bg-gray-50 border-t border-gray-100">
-                            <button onclick="addRow('spTableBody', 'sp')" class="text-sm text-evgreen font-bold flex items-center hover:text-green-700 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-                                <span class="text-lg mr-2 leading-none">+</span> 添加 SP 司机
-                            </button>
+                            <button onclick="addRow('spTableBody', 'sp')" class="text-sm text-evgreen font-bold flex items-center bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">+ Add Single Driver</button>
                         </div>
                     </div>
-
                 </div>
             </div>
 
             <div id="tab3" class="tab-content max-w-4xl mx-auto">
                 <div class="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center space-y-6 mt-10">
                     <div class="w-24 h-24 bg-green-50 text-evgreen rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </div>
-                    <h2 class="text-3xl font-black text-gray-800">万事俱备，准备计算</h2>
-                    <p class="text-gray-500 text-lg">系统将自动合并 Tab 1 的流水与 Tab 2 的最新配置，计算生成每个公司的独立账单。</p>
-                    
-                    <button id="generateBtn" onclick="submitToFastAPI()" class="mt-10 bg-evgreen hover:bg-green-600 text-white font-black py-5 px-12 rounded-full shadow-lg shadow-green-200 transition transform hover:-translate-y-1 text-xl flex items-center mx-auto">
-                        引擎启动：生成并下载 PDF 账单压缩包
+                    <h2 class="text-3xl font-black text-gray-800">Final Processing</h2>
+                    <p class="text-gray-500 text-lg">The engine will merge raw data with cloud configurations to generate corporate-specific PDF invoices and a master summary.</p>
+                    <button id="generateBtn" onclick="submitToFastAPI()" class="mt-10 bg-evgreen hover:bg-green-600 text-white font-black py-5 px-12 rounded-full shadow-lg transition transform hover:-translate-y-1 text-xl flex items-center mx-auto">
+                        Generate & Download ZIP Package
                     </button>
-                    <p id="loadingMsg" class="hidden text-evgreen font-bold text-lg animate-pulse mt-8">⚙️ 正在疯狂解析表格并进行高级排版，请稍候...</p>
+                    <p id="loadingMsg" class="hidden text-evgreen font-bold text-lg animate-pulse mt-8">⚙️ Calculating invoices and rendering PDFs... Please wait.</p>
                 </div>
             </div>
         </div>
     </main>
 
+    <div id="batchModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex justify-center items-center">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-[450px] transform transition-all">
+            <h3 id="batchModalTitle" class="text-lg font-bold text-gray-800 mb-2">Batch Import</h3>
+            <p id="batchModalDesc" class="text-sm text-gray-500 mb-4">Paste identifiers below, one per line.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Company</label>
+                    <input type="text" id="batchModalCompany" readonly class="w-full px-3 py-2 bg-gray-100 text-gray-600 border border-gray-300 rounded-lg outline-none font-bold">
+                </div>
+                <div>
+                    <label id="batchModalInputLabel" class="block text-sm font-medium text-gray-700 mb-1">List (Vehicles / Emails)</label>
+                    <textarea id="batchModalTextarea" rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-evgreen outline-none" placeholder="SGB1234A&#10;SGB5678B&#10;..."></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="closeBatchModal()" class="px-4 py-2 text-gray-500 font-medium hover:bg-gray-100 rounded-lg transition">Cancel</button>
+                <button onclick="submitBatchModal()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-md">Confirm Import</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="manageModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex justify-center items-center">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-[500px] max-h-[85vh] flex flex-col transform transition-all">
+            <div class="flex justify-between items-center mb-2">
+                <h3 id="manageModalTitle" class="text-lg font-bold text-gray-800">Manage Company</h3>
+                <button onclick="clearAllManageItems()" class="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded hover:bg-red-100 transition">Delete All</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Edit identifiers or remove them. Click save to apply changes to the table.</p>
+            
+            <div id="manageModalList" class="flex-1 overflow-y-auto space-y-2 pr-2 no-scrollbar bg-gray-50 p-3 rounded-lg border border-gray-100">
+                </div>
+            
+            <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                <button onclick="closeManageModal()" class="px-4 py-2 text-gray-500 font-medium hover:bg-gray-100 rounded-lg transition">Cancel</button>
+                <button onclick="saveManageModal()" class="px-4 py-2 bg-evgreen text-white font-bold rounded-lg hover:bg-green-600 transition shadow-md">Apply & Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let supabaseClient;
+        let currentBatchType = ''; 
+        let currentManageType = '';
+        let currentManageCompany = '';
 
-        window.onload = async () => {
-            await initSupabase();
-            checkAuth();
-            bindFileInputs();
-        };
+        function bindFileInputs() {
+            const spInput = document.getElementById('spTxFile');
+            const gpInput = document.getElementById('gpTxFile');
+            if (spInput) spInput.addEventListener('change', e => { if(e.target.files[0]) document.getElementById('spTxName').innerText = e.target.files[0].name; });
+            if (gpInput) gpInput.addEventListener('change', e => { if(e.target.files[0]) document.getElementById('gpTxName').innerText = e.target.files[0].name; });
+        }
 
         async function initSupabase() {
             try {
                 const res = await fetch('/config');
-                if (!res.ok) throw new Error("无法获取配置");
                 const config = await res.json();
                 supabaseClient = supabase.createClient(config.supabase_url, config.supabase_key);
-            } catch (error) {
-                console.error("初始化失败:", error);
-            }
+            } catch (e) { console.error("Initialization Failed", e); }
+        }
+
+        window.onload = async () => {
+            await initSupabase();
+            checkAuth();
+            bindFileInputs(); 
+        };
+
+        // 动态更新所有下拉框
+        function syncCompanyList() {
+            const dataList = document.getElementById('sysCompanyList');
+            const batchGpSelect = document.getElementById('batchGpCompany');
+            const batchSpSelect = document.getElementById('batchSpCompany');
+            const filterGpSelect = document.getElementById('filterGpCompany');
+            const filterSpSelect = document.getElementById('filterSpCompany');
+            
+            dataList.innerHTML = '';
+            const defaultBatch = '<option value="">Select Target...</option>';
+            const defaultFilter = '<option value="">All Companies</option>';
+            
+            batchGpSelect.innerHTML = defaultBatch;
+            batchSpSelect.innerHTML = defaultBatch;
+            
+            const currFilterGp = filterGpSelect.value;
+            const currFilterSp = filterSpSelect.value;
+            filterGpSelect.innerHTML = defaultFilter;
+            filterSpSelect.innerHTML = defaultFilter;
+
+            document.querySelectorAll('#rateTableBody tr').forEach(row => {
+                const td = row.cells[0];
+                const company = td.querySelector('input') ? td.querySelector('input').value.trim() : td.innerText.trim();
+                if(company) {
+                    const opt = `<option value="${company}">${company}</option>`;
+                    dataList.innerHTML += `<option value="${company}">`;
+                    batchGpSelect.innerHTML += opt;
+                    batchSpSelect.innerHTML += opt;
+                    filterGpSelect.innerHTML += opt;
+                    filterSpSelect.innerHTML += opt;
+                }
+            });
+            
+            if(currFilterGp) filterGpSelect.value = currFilterGp;
+            if(currFilterSp) filterSpSelect.value = currFilterSp;
+        }
+
+        // 表格实时检索与过滤核心逻辑
+        function filterTable(type) {
+            const searchInput = document.getElementById(type === 'gp' ? 'searchGp' : 'searchSp').value.toLowerCase();
+            const filterCompany = document.getElementById(type === 'gp' ? 'filterGpCompany' : 'filterSpCompany').value.toLowerCase();
+            const tbodyId = type === 'gp' ? 'gpTableBody' : 'spTableBody';
+            
+            document.querySelectorAll(`#${tbodyId} tr`).forEach(row => {
+                const tdId = row.cells[0];
+                const tdComp = row.cells[1];
+                
+                const idText = (tdId.querySelector('input') ? tdId.querySelector('input').value : tdId.innerText).toLowerCase();
+                const compText = (tdComp.querySelector('input') ? tdComp.querySelector('input').value : tdComp.innerText).toLowerCase();
+
+                const matchesSearch = idText.includes(searchInput) || compText.includes(searchInput);
+                const matchesCompany = filterCompany === "" || compText === filterCompany;
+
+                if (matchesSearch && matchesCompany) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         }
 
         function checkAuth() {
@@ -257,22 +348,19 @@
             if (token) {
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('userNameDisplay').innerText = email || 'User';
-                document.querySelector('.rounded-full.bg-evgreen').innerText = (email || 'U').charAt(0).toUpperCase();
+                document.getElementById('avatarIcon').innerText = (email || 'U')[0].toUpperCase();
+                loadAllFromSupabase(); 
             } else {
                 document.getElementById('loginOverlay').style.display = 'flex';
             }
         }
 
         async function login() {
-            if (!supabaseClient) return alert("系统尚未初始化完毕");
             const email = document.getElementById('email').value;
             const pwd = document.getElementById('password').value;
-            if (!email || !pwd) return alert("请输入邮箱和密码");
-
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pwd });
-            if (error) {
-                alert("登录失败: " + error.message);
-            } else {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pwd });
+            if (error) alert("Access Denied: " + error.message);
+            else {
                 localStorage.setItem('evone_token', data.session.access_token);
                 localStorage.setItem('evone_email', data.user.email);
                 checkAuth();
@@ -281,279 +369,378 @@
 
         async function logout() {
             if (supabaseClient) await supabaseClient.auth.signOut();
-            localStorage.removeItem('evone_token');
-            localStorage.removeItem('evone_email');
-            checkAuth();
+            localStorage.clear();
+            location.reload();
         }
 
-        // 切换主级 Tab
-        function switchTab(tabId) {
+        function switchTab(id) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('header button').forEach(btn => btn.className = "pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm transition");
-            document.getElementById(tabId).classList.add('active');
-            document.getElementById('btn-' + tabId).className = "pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm transition";
+            document.getElementById(id).classList.add('active');
+            document.getElementById('btn-' + id).className = "pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm transition";
         }
 
-        // 切换二级 Sub-Tab (Tab 2 内部)
-        function switchSubTab(subTabName) {
-            // 隐藏所有内容区域，重置所有按钮样式
-            ['rate', 'gp', 'sp'].forEach(name => {
-                document.getElementById('subtab-' + name).classList.add('hidden');
-                document.getElementById('subtab-' + name).classList.remove('block');
-                
-                const btn = document.getElementById('subbtn-' + name);
-                btn.className = "px-6 py-3 font-medium text-sm text-gray-500 hover:text-gray-700 transition rounded-t-lg";
+        function switchSubTab(name) {
+            if (name !== 'rate') syncCompanyList(); 
+            ['rate', 'gp', 'sp'].forEach(n => {
+                document.getElementById('subtab-' + n).classList.replace('block', 'hidden');
+                document.getElementById('subbtn-' + n).className = "px-6 py-3 font-medium text-sm text-gray-500 hover:text-gray-700 transition rounded-t-lg";
             });
-            
-            // 显示选中的内容区域，激活选中按钮样式
-            document.getElementById('subtab-' + subTabName).classList.remove('hidden');
-            document.getElementById('subtab-' + subTabName).classList.add('block');
-            
-            const activeBtn = document.getElementById('subbtn-' + subTabName);
-            activeBtn.className = "px-6 py-3 font-bold text-sm text-evgreen bg-white border-t border-l border-r border-gray-200 rounded-t-lg -mb-px relative z-10";
+            document.getElementById('subtab-' + name).classList.replace('hidden', 'block');
+            document.getElementById('subbtn-' + name).className = "px-6 py-3 font-bold text-sm text-evgreen bg-white border-t border-l border-r border-gray-200 rounded-t-lg -mb-px z-10";
         }
 
-        function bindFileInputs() {
-            document.getElementById('spTxFile').addEventListener('change', e => {
-                if(e.target.files.length) {
-                    document.getElementById('spTxName').innerText = e.target.files[0].name;
-                    document.getElementById('spTxName').classList.add('text-evgreen', 'font-bold');
-                }
-            });
-            document.getElementById('gpTxFile').addEventListener('change', e => {
-                if(e.target.files.length) {
-                    document.getElementById('gpTxName').innerText = e.target.files[0].name;
-                    document.getElementById('gpTxName').classList.add('text-evgreen', 'font-bold');
-                }
-            });
-        }
-
-        function addRow(tbodyId, type) {
-            const tbody = document.getElementById(tbodyId);
-            const tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-50";
-            let innerHTML = '';
-            
-            if(type === 'rate') {
-                innerHTML = `
-                    <td class="px-6 py-3 text-gray-800 font-medium" contenteditable="true"></td>
-                    <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">0</td>
-                    <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true"></td>
-                    <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">0</td>`;
-            } else if(type === 'gp') {
-                innerHTML = `
-                    <td class="px-6 py-3 text-gray-800 font-medium tracking-wider" contenteditable="true"></td>
-                    <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true"></td>`;
-            } else if(type === 'sp') {
-                innerHTML = `
-                    <td class="px-6 py-3 text-gray-800 font-medium" contenteditable="true"></td>
-                    <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true"></td>`;
+        function generateActionButtons(isEditing) {
+            if (isEditing) {
+                return `
+                    <button onclick="saveRow(this)" class="text-evgreen font-bold text-xs hover:text-green-700 mr-2">Save</button>
+                    <button onclick="this.closest('tr').remove()" class="text-red-400 font-bold text-xs hover:text-red-600">Del</button>
+                `;
+            } else {
+                return `
+                    <button onclick="editRow(this)" class="text-blue-500 font-bold text-xs hover:text-blue-700 mr-2">Edit</button>
+                    <button onclick="deleteRowPrompt(this)" class="text-gray-400 font-bold text-xs hover:text-red-600">Del</button>
+                `;
             }
-            
-            innerHTML += `<td class="px-6 py-3"><button onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs">删除</button></td>`;
-            tr.innerHTML = innerHTML;
-            tbody.appendChild(tr);
         }
 
-        function parseExcelToTable(event, tbodyId, type) {
-            const file = event.target.files[0];
-            if (!file) return;
+        function editRow(btn) {
+            const tr = btn.closest('tr');
+            tr.classList.add('editing-row');
+            
+            const tds = tr.querySelectorAll('td:not(:last-child)');
+            tds.forEach((td, index) => {
+                const val = td.innerText.trim();
+                if ((tr.closest('tbody').id !== 'rateTableBody' && index === 1)) {
+                    td.innerHTML = `<input type="text" list="sysCompanyList" value="${val}" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen">`;
+                } else {
+                    td.innerHTML = `<input type="text" value="${val}" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen ${index>0 && tr.closest('tbody').id === 'rateTableBody' ? 'text-blue-600 font-bold':''}">`;
+                }
+            });
+            
+            tr.lastElementChild.innerHTML = generateActionButtons(true);
+        }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonArr = XLSX.utils.sheet_to_json(sheet, {header: 1});
-                
-                const tbody = document.getElementById(tbodyId);
-                tbody.innerHTML = '';
-                
-                for(let i = 1; i < jsonArr.length; i++) {
-                    const row = jsonArr[i];
-                    if(!row || row.length === 0 || (!row[0] && !row[1])) continue;
+        function saveRow(btn) {
+            const tr = btn.closest('tr');
+            tr.classList.remove('editing-row');
+            
+            const tds = tr.querySelectorAll('td:not(:last-child)');
+            tds.forEach((td, index) => {
+                const input = td.querySelector('input');
+                if (input) {
+                    const val = input.value.trim();
+                    td.innerHTML = val;
+                    if (index > 0 && tr.closest('tbody').id === 'rateTableBody') td.classList.add('text-blue-600', 'font-bold');
+                    if (index === 1 && tr.closest('tbody').id !== 'rateTableBody') td.classList.add('text-blue-600', 'font-bold');
+                }
+            });
+            
+            tr.lastElementChild.innerHTML = generateActionButtons(false);
+            if(tr.closest('tbody').id === 'rateTableBody') syncCompanyList();
+            
+            const type = tr.closest('tbody').id === 'gpTableBody' ? 'gp' : (tr.closest('tbody').id === 'spTableBody' ? 'sp' : null);
+            if(type) filterTable(type);
+        }
 
+        function deleteRowPrompt(btn) {
+            if(confirm("Delete this entry? Click 'Sync to Cloud' later to finalize.")) {
+                btn.closest('tr').remove();
+            }
+        }
+
+        function addRow(id, type) {
+            const body = document.getElementById(id);
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 editing-row"; 
+            
+            let prefilledCompany = '';
+            if(type === 'gp') prefilledCompany = document.getElementById('filterGpCompany').value;
+            if(type === 'sp') prefilledCompany = document.getElementById('filterSpCompany').value;
+            
+            if(type==='rate') {
+                tr.innerHTML = `<td class="px-6 py-3"><input type="text" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen"></td>
+                                <td class="px-6 py-3 text-blue-600 font-bold"><input type="text" value="0" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen text-blue-600 font-bold"></td>
+                                <td class="px-6 py-3 text-blue-600 font-bold"><input type="text" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen text-blue-600 font-bold"></td>
+                                <td class="px-6 py-3 text-blue-600 font-bold"><input type="text" value="0" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen text-blue-600 font-bold"></td>`;
+            } else {
+                tr.innerHTML = `<td class="px-6 py-3 ${type==='gp'?'tracking-wider':''}"><input type="text" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen"></td>
+                                <td class="px-6 py-3"><input type="text" list="sysCompanyList" value="${prefilledCompany}" class="w-full bg-white border border-gray-300 px-2 py-1 rounded text-sm outline-none focus:ring-1 focus:ring-evgreen"></td>`;
+            }
+            tr.innerHTML += `<td class="px-6 py-3">${generateActionButtons(true)}</td>`;
+            body.prepend(tr);
+        }
+
+        // --- Batch Add Modal Logic ---
+        function openBatchModal(type) {
+            const selectId = type === 'gp' ? 'batchGpCompany' : 'batchSpCompany';
+            const company = document.getElementById(selectId).value;
+            
+            if (!company) { alert("Please select a Target Company from the dropdown first."); return; }
+
+            currentBatchType = type;
+            document.getElementById('batchModalCompany').value = company;
+            document.getElementById('batchModalTitle').innerText = `Batch Add to ${company}`;
+            document.getElementById('batchModalInputLabel').innerText = type === 'gp' ? 'Vehicle Plates (One per line)' : 'Driver Emails (One per line)';
+            document.getElementById('batchModalTextarea').value = '';
+            document.getElementById('batchModal').classList.remove('hidden');
+        }
+
+        function closeBatchModal() { document.getElementById('batchModal').classList.add('hidden'); }
+
+        function submitBatchModal() {
+            const company = document.getElementById('batchModalCompany').value;
+            const text = document.getElementById('batchModalTextarea').value;
+            const items = text.split('\n').map(item => item.trim()).filter(item => item !== '');
+
+            if (items.length === 0) { alert("Please enter at least one item."); return; }
+
+            const tbodyId = currentBatchType === 'gp' ? 'gpTableBody' : 'spTableBody';
+            const tbody = document.getElementById(tbodyId);
+            
+            items.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50";
+                tr.innerHTML = `<td class="px-6 py-3 font-medium ${currentBatchType==='gp'?'tracking-wider':''}">${item}</td><td class="px-6 py-3 text-blue-600 font-bold">${company}</td><td class="px-6 py-3">${generateActionButtons(false)}</td>`;
+                tbody.prepend(tr);
+            });
+
+            closeBatchModal();
+            filterTable(currentBatchType); 
+            alert(`Added ${items.length} items to ${company}. Sync to Cloud to save.`);
+        }
+
+        // ✨ --- Manage Company Modal Logic (Edit/Delete specific company) ---
+        function openManageModal(type) {
+            const selectId = type === 'gp' ? 'batchGpCompany' : 'batchSpCompany';
+            const company = document.getElementById(selectId).value;
+            if (!company) { alert("Please select a Target Company from the dropdown first."); return; }
+
+            currentManageType = type;
+            currentManageCompany = company;
+
+            document.getElementById('manageModalTitle').innerText = `Manage: ${company}`;
+            const listContainer = document.getElementById('manageModalList');
+            listContainer.innerHTML = '';
+
+            const tbodyId = type === 'gp' ? 'gpTableBody' : 'spTableBody';
+            const rows = document.querySelectorAll(`#${tbodyId} tr`);
+            
+            let count = 0;
+            rows.forEach(row => {
+                const tdId = row.cells[0];
+                const tdComp = row.cells[1];
+                const rowCompany = tdComp.querySelector('input') ? tdComp.querySelector('input').value.trim() : tdComp.innerText.trim();
+                
+                if (rowCompany === company) {
+                    const identifier = tdId.querySelector('input') ? tdId.querySelector('input').value.trim() : tdId.innerText.trim();
+                    const div = document.createElement('div');
+                    div.className = "flex items-center space-x-2 bg-white p-2 rounded shadow-sm border border-gray-200";
+                    div.innerHTML = `
+                        <input type="text" value="${identifier}" class="flex-1 bg-transparent border-b border-gray-200 px-2 py-1 text-sm outline-none focus:border-evgreen ${currentManageType==='gp'?'tracking-wider font-medium':''}">
+                        <button onclick="this.parentElement.remove()" class="text-red-500 font-bold text-xs px-2 py-1 hover:bg-red-50 rounded transition">Del</button>
+                    `;
+                    listContainer.appendChild(div);
+                    count++;
+                }
+            });
+
+            if (count === 0) {
+                listContainer.innerHTML = `<p class="text-sm text-gray-400 italic py-6 text-center">No existing records found for ${company}.</p>`;
+            }
+
+            document.getElementById('manageModal').classList.remove('hidden');
+        }
+
+        function closeManageModal() { document.getElementById('manageModal').classList.add('hidden'); }
+
+        function clearAllManageItems() {
+            if(confirm("Are you sure you want to clear all records from this list?")) {
+                document.getElementById('manageModalList').innerHTML = '';
+            }
+        }
+
+        function saveManageModal() {
+            const tbodyId = currentManageType === 'gp' ? 'gpTableBody' : 'spTableBody';
+            const tbody = document.getElementById(tbodyId);
+            
+            // 1. 从主表格中移除该公司的所有旧数据
+            const rows = document.querySelectorAll(`#${tbodyId} tr`);
+            rows.forEach(row => {
+                const tdComp = row.cells[1];
+                const rowCompany = tdComp.querySelector('input') ? tdComp.querySelector('input').value.trim() : tdComp.innerText.trim();
+                if (rowCompany === currentManageCompany) {
+                    row.remove();
+                }
+            });
+
+            // 2. 将浮窗内剩余的、修改过的数据重新插回主表格
+            const inputs = document.querySelectorAll('#manageModalList input');
+            let addCount = 0;
+            inputs.forEach(input => {
+                const val = input.value.trim();
+                if (val) {
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-gray-50";
-                    let innerHTML = '';
-                    if(type === 'rate') {
-                        innerHTML = `
-                            <td class="px-6 py-3 text-gray-800 font-medium" contenteditable="true">${row[0]||''}</td>
-                            <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">${row[1]||'0'}</td>
-                            <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">${row[2]||''}</td>
-                            <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">${row[3]||'0'}</td>`;
-                    } else if(type === 'gp') {
-                        innerHTML = `
-                            <td class="px-6 py-3 text-gray-800 font-medium tracking-wider" contenteditable="true">${row[0]||''}</td>
-                            <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">${row[1]||''}</td>`;
-                    } else {
-                        innerHTML = `
-                            <td class="px-6 py-3 text-gray-800 font-medium" contenteditable="true">${row[0]||''}</td>
-                            <td class="px-6 py-3 text-blue-600 font-bold" contenteditable="true">${row[1]||''}</td>`;
-                    }
-                    innerHTML += `<td class="px-6 py-3"><button onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs">删除</button></td>`;
-                    tr.innerHTML = innerHTML;
-                    tbody.appendChild(tr);
+                    tr.innerHTML = `
+                        <td class="px-6 py-3 font-medium ${currentManageType==='gp'?'tracking-wider':''}">${val}</td>
+                        <td class="px-6 py-3 text-blue-600 font-bold">${currentManageCompany}</td>
+                        <td class="px-6 py-3">${generateActionButtons(false)}</td>
+                    `;
+                    tbody.prepend(tr);
+                    addCount++;
                 }
-            };
-            reader.readAsArrayBuffer(file);
-            event.target.value = '';
+            });
+
+            closeManageModal();
+            filterTable(currentManageType); 
+            alert(`Updated ${addCount} records for [${currentManageCompany}]. Remember to click 'Sync to Cloud' to apply changes to the database.`);
+        }
+
+        // --- Sync Data ---
+        async function loadAllFromSupabase() {
+            if (!supabaseClient) return;
+            try {
+                const { data: rates } = await supabaseClient.schema('evone_billing').from('pricing_rates').select('*');
+                if (rates && rates.length > 0) {
+                    const body = document.getElementById('rateTableBody');
+                    body.innerHTML = '';
+                    rates.forEach(r => body.innerHTML += `<tr class="hover:bg-gray-50"><td class="px-6 py-3 font-medium">${r.company_name}</td><td class="px-6 py-3 text-blue-600 font-bold">${r.base_rate}</td><td class="px-6 py-3 text-blue-600 font-bold">${r.threshold_kwh || ''}</td><td class="px-6 py-3 text-blue-600 font-bold">${r.discounted_rate}</td><td class="px-6 py-3">${generateActionButtons(false)}</td></tr>`);
+                }
+                
+                syncCompanyList();
+
+                const { data: gps } = await supabaseClient.schema('evone_billing').from('gp_crm').select('*');
+                if (gps && gps.length > 0) {
+                    const body = document.getElementById('gpTableBody');
+                    body.innerHTML = '';
+                    gps.forEach(v => body.innerHTML += `<tr class="hover:bg-gray-50"><td class="px-6 py-3 tracking-wider font-medium">${v.vehicle_plate}</td><td class="px-6 py-3 text-blue-600 font-bold">${v.company_name}</td><td class="px-6 py-3">${generateActionButtons(false)}</td></tr>`);
+                }
+                const { data: sps } = await supabaseClient.schema('evone_billing').from('sp_crm').select('*');
+                if (sps && sps.length > 0) {
+                    const body = document.getElementById('spTableBody');
+                    body.innerHTML = '';
+                    sps.forEach(d => body.innerHTML += `<tr class="hover:bg-gray-50"><td class="px-6 py-3 font-medium">${d.driver_email}</td><td class="px-6 py-3 text-blue-600 font-bold">${d.company_name}</td><td class="px-6 py-3">${generateActionButtons(false)}</td></tr>`);
+                }
+                
+                filterTable('gp');
+                filterTable('sp');
+            } catch (e) { console.error("Sync Load Error", e); }
         }
 
         async function saveAllToSupabase(btn) {
-            if (!supabaseClient) return alert("系统尚未初始化");
-            btn.innerHTML = "💾 数据保存中...";
-            btn.disabled = true;
-
-            try {
-                // 1. 抓取并保存【阶梯费率】
-                const rates = [];
-                document.querySelectorAll('#rateTableBody tr').forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if(cells.length === 5 && cells[0].innerText.trim() !== '') {
-                        rates.push({
-                            company_name: cells[0].innerText.trim(),
-                            base_rate: parseFloat(cells[1].innerText) || 0,
-                            threshold_kwh: parseFloat(cells[2].innerText) || null,
-                            discounted_rate: parseFloat(cells[3].innerText) || 0
-                        });
-                    }
-                });
-                if (rates.length > 0) {
-                    const { error: err1 } = await supabaseClient.schema('evone_billing').from('pricing_rates').upsert(rates, { onConflict: 'company_name' });
-                    if (err1) throw new Error("费率表保存失败: " + err1.message);
-                }
-
-                // 2. 抓取并保存【GP 车辆映射】
-                const gps = [];
-                document.querySelectorAll('#gpTableBody tr').forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if(cells.length === 3 && cells[0].innerText.trim() !== '') {
-                        gps.push({
-                            vehicle_plate: cells[0].innerText.trim(),
-                            company_name: cells[1].innerText.trim()
-                        });
-                    }
-                });
-                if (gps.length > 0) {
-                    const { error: err2 } = await supabaseClient.schema('evone_billing').from('gp_crm').upsert(gps, { onConflict: 'vehicle_plate' });
-                    if (err2) throw new Error("GP CRM保存失败: " + err2.message);
-                }
-
-                // 3. 抓取并保存【SP 司机映射】
-                const sps = [];
-                document.querySelectorAll('#spTableBody tr').forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if(cells.length === 3 && cells[0].innerText.trim() !== '') {
-                        sps.push({
-                            driver_email: cells[0].innerText.trim(),
-                            company_name: cells[1].innerText.trim()
-                        });
-                    }
-                });
-                if (sps.length > 0) {
-                    const { error: err3 } = await supabaseClient.schema('evone_billing').from('sp_crm').upsert(sps, { onConflict: 'driver_email' });
-                    if (err3) throw new Error("SP CRM保存失败: " + err3.message);
-                }
-
-                alert("✅ 三张表格的数据已成功分类并保存至 Supabase 数据库！");
-            } catch (error) {
-                alert("保存终止: " + error.message);
-            } finally {
-                btn.innerHTML = `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> 备份配置至数据库`;
-                btn.disabled = false;
-            }
-        }
-
-        function htmlTableToExcelBlob(tbodyId, headerArr) {
-            const rows = document.querySelectorAll(`#${tbodyId} tr`);
-            let data = [headerArr];
-            
-            rows.forEach(row => {
-                let rowData = [];
-                const cells = row.querySelectorAll('td[contenteditable="true"]');
-                cells.forEach(cell => rowData.push(cell.innerText.trim()));
-                if(rowData.some(val => val !== '')) data.push(rowData);
-            });
-            
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-            const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-            return new Blob([wbout], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-        }
-
-        async function submitToFastAPI() {
-            // 1. 获取实体文件
-            const spTx = document.getElementById('spTxFile').files[0];
-            const gpTx = document.getElementById('gpTxFile').files[0];
-
-            // 2. 检查文件是否存在
-            if (!spTx || !gpTx) {
-                alert("⚠️ 错误：请先在第一步上传 SP 和 GP 的交易流水报表！");
-                switchTab('tab1');
+            if(document.querySelectorAll('.editing-row').length > 0) {
+                alert("Please Save all editing rows before syncing to cloud.");
                 return;
             }
 
-            // 3. 这里的顺序至关重要：先定义 formData，再 append 内容
-            const formData = new FormData();
+            btn.innerText = "Synchronizing...";
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                const rates = [];
+                document.querySelectorAll('#rateTableBody tr').forEach(row => {
+                    const tds = row.querySelectorAll('td');
+                    if (tds.length < 4) return; 
+                    const company = tds[0].innerText.trim();
+                    if (company) rates.push({ company_name: company, base_rate: parseFloat(tds[1].innerText) || 0, threshold_kwh: tds[2].innerText.trim() === '' ? null : parseFloat(tds[2].innerText), discounted_rate: parseFloat(tds[3].innerText) || 0 });
+                });
+
+                const gps = [];
+                document.querySelectorAll('#gpTableBody tr').forEach(row => {
+                    const tds = row.querySelectorAll('td');
+                    if (tds.length < 2) return;
+                    const plate = tds[0].innerText.trim().toUpperCase();
+                    if (plate) gps.push({ vehicle_plate: plate, company_name: tds[1].innerText.trim() });
+                });
+
+                const sps = [];
+                document.querySelectorAll('#spTableBody tr').forEach(row => {
+                    const tds = row.querySelectorAll('td');
+                    if (tds.length < 2) return;
+                    const email = tds[0].innerText.trim().toLowerCase();
+                    if (email) sps.push({ driver_email: email, company_name: tds[1].innerText.trim() });
+                });
+
+                const { error: delErr1 } = await supabaseClient.schema('evone_billing').from('pricing_rates').delete().not('company_name', 'is', null);
+                if (delErr1) throw new Error("Clear old rates failed: " + delErr1.message);
+                if (rates.length > 0) await supabaseClient.schema('evone_billing').from('pricing_rates').insert(rates);
+
+                const { error: delErr2 } = await supabaseClient.schema('evone_billing').from('gp_crm').delete().not('vehicle_plate', 'is', null);
+                if (delErr2) throw new Error("Clear old GP CRM failed: " + delErr2.message);
+                if (gps.length > 0) await supabaseClient.schema('evone_billing').from('gp_crm').insert(gps);
+
+                const { error: delErr3 } = await supabaseClient.schema('evone_billing').from('sp_crm').delete().not('driver_email', 'is', null);
+                if (delErr3) throw new Error("Clear old SP CRM failed: " + delErr3.message);
+                if (sps.length > 0) await supabaseClient.schema('evone_billing').from('sp_crm').insert(sps);
+
+                alert("✅ Success: Cloud database fully synchronized!");
+            } catch (error) {
+                alert("❌ Sync Failed: " + error.message);
+            } finally {
+                btn.innerText = "Sync to Cloud";
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function htmlTableToExcelBlob(id, headers) {
+            const data = [headers];
+            document.querySelectorAll(`#${id} tr`).forEach(row => {
+                const tds = row.querySelectorAll('td:not(:last-child)'); 
+                if (tds.length < headers.length) return;
+                const vals = Array.from(tds).map(td => {
+                    const input = td.querySelector('input');
+                    return input ? input.value.trim() : td.innerText.trim();
+                });
+                if(vals.some(v => v)) data.push(vals);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+            return new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+        }
+
+        async function submitToFastAPI() {
+            if(document.querySelectorAll('.editing-row').length > 0) {
+                alert("Please Save all editing rows before generating invoices.");
+                switchTab('tab2'); return;
+            }
+
+            const spTx = document.getElementById('spTxFile').files[0];
+            const gpTx = document.getElementById('gpTxFile').files[0];
+            if (!spTx || !gpTx) { alert("Action Required: Please upload both SP and GP transaction reports first."); switchTab('tab1'); return; }
 
             const btn = document.getElementById('generateBtn');
             const loader = document.getElementById('loadingMsg');
-            btn.classList.add('hidden');
-            loader.classList.remove('hidden');
+            btn.classList.add('hidden'); loader.classList.remove('hidden');
 
             try {
-                // 4. 装入流水文件 (并重命名以彻底废除后端命名规则限制)
+                const formData = new FormData();
                 formData.append('files', new File([spTx], 'sp_transaction_report.' + spTx.name.split('.').pop()));
                 formData.append('files', new File([gpTx], 'gp_transaction_report.' + gpTx.name.split('.').pop()));
+                formData.append('files', new File([htmlTableToExcelBlob('rateTableBody', ['company', 'base', 'Threshold', 'discounted'])], 'rates.xlsx'));
+                formData.append('files', new File([htmlTableToExcelBlob('gpTableBody', ['Vehicle No.', 'Company'])], 'gp_crm.xlsx'));
+                formData.append('files', new File([htmlTableToExcelBlob('spTableBody', ['Email', 'Company'])], 'sp_crm.xlsx'));
+
+                const response = await fetch('/process-pdf', { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('evone_token')}` }, body: formData });
+                const contentType = response.headers.get("content-type");
                 
-                // 5. 将网页上的三个实时表格转为 Excel 并塞入 formData
-                const rateBlob = htmlTableToExcelBlob('rateTableBody', ['company', 'base', 'Threshold', 'discounted']);
-                formData.append('files', new File([rateBlob], 'threshold_rates.xlsx'));
-
-                const gpBlob = htmlTableToExcelBlob('gpTableBody', ['Vehicle No.', 'Company']);
-                formData.append('files', new File([gpBlob], 'gp_crm.xlsx'));
-
-                const spBlob = htmlTableToExcelBlob('spTableBody', ['Email', 'Company']);
-                formData.append('files', new File([spBlob], 'sp_crm.xlsx'));
-
-                // 6. 发起请求
-                const token = localStorage.getItem('evone_token');
-                const response = await fetch('/process-pdf', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData  // 这里的 formData 现在肯定已经定义好了
-                });
-
-                // 7. 处理返回结果
-                if (response.ok) {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        const errorData = await response.json();
-                        alert("❌ 引擎报错: " + (errorData.message || "未知错误"));
-                        return;
-                    }
+                if (response.ok && contentType && contentType.includes("application/zip")) {
                     const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `EVOne_Billing_${new Date().toISOString().slice(0,7)}.zip`;
-                    document.body.appendChild(a);
+                    a.href = window.URL.createObjectURL(blob);
+                    a.download = `EVOne_Billing_Export_${new Date().toISOString().slice(0,7)}.zip`;
                     a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
+                    window.URL.revokeObjectURL(a.href);
                 } else {
-                    const errorData = await response.json();
-                    alert("❌ 生成失败: " + (errorData.message || "未知错误"));
+                    let errorMessage = "Unknown Server Error";
+                    try { errorMessage = (await response.json()).message || errorMessage; } catch(e) { errorMessage = await response.text() || errorMessage; }
+                    alert("Processing Error: " + errorMessage);
                 }
-            } catch (error) {
-                console.error(error);
-                alert("🌐 网络请求失败，请检查后端 Codespaces 是否正在运行。");
-            } finally {
-                btn.classList.remove('hidden');
-                loader.classList.add('hidden');
-            }
+            } catch (e) { alert("Network Error: Verification failed."); } 
+            finally { btn.classList.remove('hidden'); loader.classList.add('hidden'); }
         }
     </script>
 </body>
