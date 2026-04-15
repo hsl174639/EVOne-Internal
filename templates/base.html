@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EVOne OPS{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { evgreen: '#00ad5f', sidebar: '#111827' } } } }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .tab-content.hidden { display: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body class="bg-gray-50 h-screen overflow-hidden flex font-sans">
+
+    <div id="loginOverlay" class="fixed inset-0 bg-gray-900 z-50 flex justify-center items-center">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-96">
+            <h2 class="text-2xl font-bold text-center text-evgreen mb-6">EVOne Login</h2>
+            <div class="space-y-4">
+                <input type="email" id="email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-evgreen outline-none">
+                <input type="password" id="password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-evgreen outline-none">
+                <button onclick="login()" class="w-full bg-evgreen text-white font-bold py-2 rounded-lg hover:bg-green-600 transition">Sign In</button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="w-64 bg-sidebar text-white flex flex-col shadow-xl z-10">
+        <div class="h-16 flex items-center px-6 border-b border-gray-800">
+            <span class="text-2xl font-black text-evgreen tracking-wider">EVOne</span>
+            <span class="ml-2 text-sm text-gray-400 font-semibold mt-1">OPS</span>
+        </div>
+        <nav class="flex-1 py-6 px-3 space-y-2">
+            <a href="/" class="flex items-center px-4 py-3 hover:bg-gray-800 rounded-lg group">
+                <span class="font-medium">Billing Settlement</span>
+            </a>
+            <a href="/e-sign" class="flex items-center px-4 py-3 hover:bg-gray-800 rounded-lg group">
+                <span class="font-medium">Document Signing</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-800 flex items-center justify-between bg-gray-900">
+            <div class="flex items-center">
+                <div class="w-10 h-10 rounded-full bg-evgreen flex items-center justify-center text-white font-bold" id="avatarIcon">U</div>
+                <div class="ml-3">
+                    <p id="userNameDisplay" class="text-sm font-medium text-white truncate w-24">User</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition">Logout</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-white overflow-hidden">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        let supabaseClient;
+        
+        async function initSupabase() {
+            const res = await fetch('/config');
+            const config = await res.json();
+            supabaseClient = supabase.createClient(config.supabase_url, config.supabase_key);
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem('evone_token');
+            const email = localStorage.getItem('evone_email');
+            if (token) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('userNameDisplay').innerText = email;
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const pwd = document.getElementById('password').value;
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pwd });
+            if (error) alert(error.message);
+            else {
+                localStorage.setItem('evone_token', data.session.access_token);
+                localStorage.setItem('evone_email', data.user.email);
+                location.reload();
+            }
+        }
+
+        async function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        window.onload = async () => {
+            await initSupabase();
+            checkAuth();
+            if (typeof onPageLoad === 'function') onPageLoad();
+        };
+
+        // 子页面 JS 插入点
+        {% block extra_js %}{% endblock %}
+    </script>
+</body>
+</html>

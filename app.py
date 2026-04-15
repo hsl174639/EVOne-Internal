@@ -1,18 +1,21 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
-from typing import List
-import pandas as pd
+import os
 import io
-import warnings
 import gc
 import zipfile
-import os
+import warnings
+import requests
+import pandas as pd
+from typing import List
 from dotenv import load_dotenv
+from jose import JWTError, jwt
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+# ReportLab PDF 绘图库导入
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib import colors
@@ -21,8 +24,11 @@ from reportlab.lib.styles import getSampleStyleSheet
 warnings.filterwarnings('ignore')
 load_dotenv()
 
-app = FastAPI(title="EVOne Billing API")
+app = FastAPI(title="EVOne Internal System API")
 
+# ==========================================
+# 1. 中间件与静态文件/模板设置
+# ==========================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,20 +38,15 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-@app.get("/")
-async def serve_frontend():
-    return FileResponse("static/index.html")
-
-@app.get("/config")
-async def get_config():
-    return {
-        "supabase_url": os.environ.get("SUPABASE_URL"),
-        "supabase_key": os.environ.get("SUPABASE_ANON_KEY")
-    }
-
+# ==========================================
+# 2. 全局环境与鉴权配置
+# ==========================================
 security = HTTPBearer()
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
+DOCUSEAL_API_KEY = os.environ.get("DOCUSEAL_API_KEY")
+DOCUSEAL_URL = "https://api.docuseal.com"
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
@@ -59,6 +60,88 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+# ==========================================
+# 3. 页面路由 (Jinja2 Templates)
+# ==========================================
+@app.get("/")
+async def serve_billing(request: Request):
+    # 默认主页：结算系统
+    return templates.TemplateResponse(request=request, name="billing.html")
+
+@app.get("/e-sign")
+async def serve_signing(request: Request):
+    # 电子签署门户
+    return templates.TemplateResponse(request=request, name="signing.html")
+
+@app.get("/config")
+async def get_config():
+    # 提供给前端初始化 Supabase SDK
+    return {
+        "supabase_url": os.environ.get("SUPABASE_URL"),
+        "supabase_key": os.environ.get("SUPABASE_ANON_KEY")
+    }
+
+# ==========================================
+# 4. DocuSeal 电子签署 API (严格匹配官方文档)
+# ==========================================
+
+# 基础 URL 绝对不能包含 /api/v1
+DOCUSEAL_BASE = "https://api.docuseal.com"
+
+@app.post("/api/create-signature-request-test")
+async def create_signature_test(data: dict, user: dict = Depends(get_current_user)):
+    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY"), "Content-Type": "application/json"}
+    payload = {
+        "template_id": int(os.environ.get("TEMPLATE_ID_TEST")),
+        "send_email": True,
+        "submitters": [
+            {"role": "ES", "email": data.get("email_es"), "name": data.get("name_es")},
+            {"role": "LEW", "email": data.get("email_lew"), "name": data.get("name_lew")}
+        ]
+    }
+    # 正确路径: /submissions
+    response = requests.post(f"{DOCUSEAL_BASE}/submissions", json=payload, headers=headers)
+    return response.json()
+
+@app.get("/api/get-signing-submissions")
+async def get_submissions(user: dict = Depends(get_current_user)):
+    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY")}
+    # 正确路径: /submissions
+    response = requests.get(f"{DOCUSEAL_BASE}/submissions", headers=headers)
+    return response.json() if response.ok else []
+
+@app.get("/api/get-document-download/{sub_id}")
+async def get_download(sub_id: str, user: dict = Depends(get_current_user)):
+    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY")}
+    
+    try:
+        # 正确路径: /submissions/{id}
+        response = requests.get(f"{DOCUSEAL_BASE}/submissions/{sub_id}", headers=headers)
+        
+        if response.ok:
+            data = response.json()
+            
+            # 根据官方数据结构，获取顶层的 documents 数组
+            docs = data.get("documents", [])
+            if docs and len(docs) > 0 and docs[0].get("url"):
+                return {"download_url": docs[0]["url"]}
+                
+            # 备用：深入每个签署人寻找
+            for sub in data.get("submitters", []):
+                for doc in sub.get("documents", []):
+                    if doc.get("url"):
+                        return {"download_url": doc["url"]}
+            
+            return {"error": True, "message": "API连接成功，但DocuSeal尚未生成PDF链接。请确保全员已完成签署。"}
+            
+        return {"error": True, "message": f"找不到该记录，DocuSeal返回404。ID: {sub_id}"}
+        
+    except Exception as e:
+        return {"error": True, "message": f"服务器解析失败: {str(e)}"}
+
+# ==========================================
+# 5. Billing 结算核心处理 API 
+# ==========================================
 async def load_dataframe(file: UploadFile, sheet_name=None):
     if not file: raise ValueError("File is missing!")
     name = file.filename.lower()
@@ -148,7 +231,7 @@ async def process_pdf(files: List[UploadFile] = File(...), user: dict = Depends(
         all_details['Year-Month'] = all_details['End Time'].astype(str).str[0:7]
 
         zip_buffer = io.BytesIO()
-        internal_summary_data = [] # 👉 新增：用于收集内部总表数据的列表
+        internal_summary_data = [] 
 
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
             months = all_details['Year-Month'].dropna().unique()
@@ -169,7 +252,6 @@ async def process_pdf(files: List[UploadFile] = File(...), user: dict = Depends(
                     applied_rate = discounted if total_kwh > threshold else base_rate
                     total_price = total_kwh * applied_rate
 
-                    # 收集该公司的核心数据，用于最后生成总表
                     internal_summary_data.append({
                         "Billing Month": month,
                         "Company": company,
@@ -267,10 +349,8 @@ async def process_pdf(files: List[UploadFile] = File(...), user: dict = Depends(
 
                     zip_file.writestr(f"{month}/{safe_comp}_{month}.pdf", pdf_buf.getvalue())
 
-            # 👉 新增：在压缩包里塞入“内部总表”
             if internal_summary_data:
                 summary_df = pd.DataFrame(internal_summary_data)
-                # 按照月份和金额排序，让老板看起来更直观
                 summary_df = summary_df.sort_values(by=['Billing Month', 'Total Amount ($)'], ascending=[True, False])
                 
                 excel_buf = io.BytesIO()

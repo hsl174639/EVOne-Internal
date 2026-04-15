@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}E-Sign Portal | EVOne{% endblock %}
+
+{% block content %}
+<header class="bg-white border-b border-gray-200 px-8 pt-6 z-10 shadow-sm">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Electronic Signature Portal</h1>
+    <div class="flex space-x-8 border-b border-gray-200">
+        <button onclick="window.switchSignTab('distribute')" id="tab-btn-distribute" class="pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm transition">1. Distribute Request</button>
+        <button onclick="window.switchSignTab('track')" id="tab-btn-track" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm transition">2. Track & Download</button>
+    </div>
+</header>
+
+<div class="flex-1 overflow-y-auto p-8 bg-gray-50 no-scrollbar">
+    
+    <div id="sign-tab-distribute" class="block space-y-6 max-w-4xl mx-auto">
+        <div class="bg-white p-12 rounded-3xl shadow-sm border border-gray-100 text-center space-y-6">
+            <div class="w-20 h-20 bg-green-50 text-evgreen rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-black text-gray-800">Launch New Signature Chain</h2>
+            <p class="text-gray-500 max-w-md mx-auto">Initiate a two-step verification process. Documents will be sent sequentially to the ES and LEW for official endorsement.</p>
+            <button onclick="window.openTestModal()" class="mt-8 bg-sidebar hover:bg-black text-white font-bold py-4 px-10 rounded-xl shadow-lg transition transform hover:-translate-y-1 flex items-center mx-auto">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Create Request
+            </button>
+        </div>
+    </div>
+
+    <div id="sign-tab-track" class="hidden max-w-5xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-gray-800 text-lg">Account History & Status</h3>
+                <button onclick="window.loadSubmissions()" class="text-sm text-evgreen font-bold flex items-center hover:opacity-75">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Refresh List
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-white text-gray-400 text-xs uppercase border-b border-gray-100">
+                        <tr>
+                            <th class="px-6 py-4 font-medium">Document / Submission ID</th>
+                            <th class="px-6 py-4 font-medium">Current Status</th>
+                            <th class="px-6 py-4 font-medium text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50" id="submissionTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="testModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl w-[500px] transform transition-all border border-gray-100">
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="text-xl font-black text-gray-800">New Signature Request</h3>
+            <button onclick="window.closeTestModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <div class="space-y-6">
+            <div class="space-y-3">
+                <label class="block text-xs font-black text-evgreen uppercase tracking-wider">Step 1: Electrical Specialist (ES)</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="nameES" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
+                    <input type="email" id="emailES" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
+                </div>
+            </div>
+
+            <div class="border-t border-dashed border-gray-200"></div>
+
+            <div class="space-y-3">
+                <label class="block text-xs font-black text-blue-600 uppercase tracking-wider">Step 2: Licensed Elec. Worker (LEW)</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="nameLEW" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <input type="email" id="emailLEW" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-10 flex flex-col space-y-3">
+            <button onclick="window.sendTestRequest(event)" class="w-full bg-evgreen text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-600 transition">Confirm & Distribute</button>
+            <button onclick="window.closeTestModal()" class="w-full py-3 text-gray-400 font-medium hover:text-gray-600 text-sm">Discard Draft</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+window.onPageLoad = function() {
+    // 页面加载默认不执行，切换 Tab 时加载
+};
+
+// --- Tab 切换逻辑 ---
+window.switchSignTab = function(tabName) {
+    const tabs = ['distribute', 'track'];
+    tabs.forEach(t => {
+        document.getElementById('sign-tab-' + t).classList.add('hidden');
+        document.getElementById('sign-tab-' + t).classList.remove('block');
+        document.getElementById('tab-btn-' + t).className = "pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm transition";
+    });
+
+    document.getElementById('sign-tab-' + tabName).classList.remove('hidden');
+    document.getElementById('sign-tab-' + tabName).classList.add('block');
+    document.getElementById('tab-btn-' + tabName).className = "pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm transition";
+
+    if(tabName === 'track') {
+        window.loadSubmissions();
+    }
+};
+
+// --- 弹窗控制 ---
+window.openTestModal = function() {
+    document.getElementById('testModal').classList.remove('hidden');
+};
+
+window.closeTestModal = function() {
+    document.getElementById('testModal').classList.add('hidden');
+};
+
+// --- 核心逻辑：发起邀请 ---
+window.sendTestRequest = async function(event) {
+    const data = {
+        name_es: document.getElementById('nameES').value.trim(),
+        email_es: document.getElementById('emailES').value.trim(),
+        name_lew: document.getElementById('nameLEW').value.trim(),
+        email_lew: document.getElementById('emailLEW').value.trim()
+    };
+    
+    if(!data.name_es || !data.email_es || !data.name_lew || !data.email_lew) {
+        return alert("⚠️ Action Required: Please fill in all fields for ES and LEW.");
+    }
+
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "Dispatching Emails...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/create-signature-request-test', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': 'Bearer ' + localStorage.getItem('evone_token') 
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        
+        // 【修复点 1】：完美兼容 DocuSeal 返回的对象或数组格式
+        const isSuccess = result.id || (Array.isArray(result) && result.length > 0 && result[0].id);
+        
+        if(isSuccess) { 
+            alert("✅ Success! The signature invitation has been dispatched.\nSequential signing has been initiated.");
+            window.closeTestModal(); 
+            window.switchSignTab('track'); 
+            
+            document.getElementById('nameES').value = '';
+            document.getElementById('emailES').value = '';
+            document.getElementById('nameLEW').value = '';
+            document.getElementById('emailLEW').value = '';
+        } else {
+            alert("❌ Dispatch Failed: " + (result.message || "Unknown Error. Check backend logs."));
+        }
+    } catch (e) {
+        alert("⚠️ Network Error: Unable to reach DocuSeal API.");
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
+
+// --- 核心逻辑：加载历史记录 ---
+window.loadSubmissions = async function() {
+    const tbody = document.getElementById('submissionTableBody');
+    tbody.innerHTML = '<tr><td colspan="3" class="p-16 text-center text-gray-400 font-medium">Syncing history from DocuSeal...</td></tr>';
+    
+    try {
+        const res = await fetch('/api/get-signing-submissions', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('evone_token') }
+        });
+        const payload = await res.json();
+        
+        // 【修复点 2】：提取出隐藏在 "data" 对象里的真实数组列表
+        const records = Array.isArray(payload) ? payload : (payload.data || []);
+        
+        tbody.innerHTML = '';
+        if(records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="p-16 text-center text-gray-400 italic">No records found. Start by distributing a new request.</td></tr>';
+            return;
+        }
+
+        records.forEach(item => {
+            const isDone = item.status === 'completed';
+            const statusLabel = isDone ? 'COMPLETED' : (item.status ? item.status.replace('_', ' ').toUpperCase() : 'PENDING');
+            const statusColor = isDone ? 'text-green-600 bg-green-50' : 'text-orange-500 bg-orange-50';
+            
+            // 【修复点 3】：安全获取模板名称，防止 null 导致崩溃
+            const docName = (item.template && item.template.name) ? item.template.name : 'Signing Request';
+            
+            let row = '<tr class="border-b border-gray-100 hover:bg-gray-50/50 transition">';
+            row += '<td class="px-6 py-5">';
+            row += '<div class="font-bold text-gray-700">' + docName + '</div>';
+            row += '<div class="text-[10px] text-gray-400 mt-1">Ref ID: ' + item.id + '</div></td>';
+            row += '<td class="px-6 py-5">';
+            row += '<span class="px-2 py-1 rounded text-[10px] font-black ' + statusColor + '">' + statusLabel + '</span></td>';
+            row += '<td class="px-6 py-5 text-right">';
+            
+            if(isDone) {
+                row += '<button onclick="window.downloadDoc(\'' + item.id + '\')" class="text-evgreen font-bold text-sm hover:underline">Download PDF</button>';
+            } else {
+                row += '<span class="text-gray-300 italic text-xs">Waiting for ES/LEW...</span>';
+            }
+            
+            row += '</td></tr>';
+            tbody.innerHTML += row;
+        });
+    } catch (e) {
+        console.error("Parse Error:", e);
+        tbody.innerHTML = '<tr><td colspan="3" class="p-16 text-center text-red-400 font-bold">Data fetch error. Please check console.</td></tr>';
+    }
+};
+
+// --- 下载逻辑 ---
+window.downloadDoc = async function(subId) {
+    try {
+        const res = await fetch('/api/get-document-download/' + subId, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('evone_token') }
+        });
+        const data = await res.json();
+        
+        // 动态展示后端传回的真实报错，不再写死
+        if(data.download_url) {
+            window.open(data.download_url, '_blank');
+        } else {
+            alert("下载失败: " + (data.message || "未找到下载链接，请联系管理员。"));
+        }
+    } catch (e) {
+        alert("下载请求崩溃，网络或服务器异常。");
+    }
+};
+{% endblock %}

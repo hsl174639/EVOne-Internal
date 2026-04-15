@@ -64,16 +64,15 @@
         <header class="bg-white border-b border-gray-200 px-8 pt-6 z-10 shadow-sm">
             <h1 class="text-3xl font-bold text-gray-800 mb-6">Monthly Billing Workflow</h1>
             <div class="flex space-x-8 border-b border-gray-200">
-                <button onclick="switchTab('tab1')" id="btn-tab1" class="pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm">1. Data Import</button>
+                <button onclick="switchTab('tab1')" id="btn-tab1" class="pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm">1. Operations & Export</button>
                 <button onclick="switchTab('tab2')" id="btn-tab2" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm">2. Tariff & CRM Mapping</button>
-                <button onclick="switchTab('tab3')" id="btn-tab3" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm">3. Execution & Export</button>
             </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-8 bg-gray-50 no-scrollbar">
-            <div id="tab1" class="tab-content active space-y-6 max-w-4xl mx-auto">
+            <div id="tab1" class="tab-content active space-y-8 max-w-4xl mx-auto">
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 class="text-xl font-bold mb-2 text-gray-800">Upload Transaction Logs</h3>
+                    <h3 class="text-xl font-bold mb-2 text-gray-800">1. Upload Transaction Logs</h3>
                     <p class="text-sm text-gray-500 mb-8">Please provide the raw transaction reports for the current billing cycle (SP & GoParkin).</p>
                     <div class="grid grid-cols-2 gap-8">
                         <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-evgreen hover:bg-green-50 transition group cursor-pointer" onclick="document.getElementById('spTxFile').click()">
@@ -93,6 +92,18 @@
                             <p class="text-sm text-gray-400 truncate px-2" id="gpTxName">No file selected</p>
                         </div>
                     </div>
+                </div>
+
+                <div class="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center space-y-6">
+                    <div class="w-20 h-20 bg-green-50 text-evgreen rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h2 class="text-3xl font-black text-gray-800">2. Final Processing</h2>
+                    <p class="text-gray-500 text-lg">Merge raw data with your CRM configurations (Tab 2) to generate corporate-specific PDF invoices.</p>
+                    <button id="generateBtn" onclick="submitToFastAPI()" class="mt-8 bg-evgreen hover:bg-green-600 text-white font-black py-4 px-12 rounded-full shadow-lg transition transform hover:-translate-y-1 text-xl flex items-center mx-auto">
+                        Generate & Download ZIP Package
+                    </button>
+                    <p id="loadingMsg" class="hidden text-evgreen font-bold text-lg animate-pulse mt-8">⚙️ Calculating invoices and rendering PDFs... Please wait.</p>
                 </div>
             </div>
 
@@ -133,16 +144,12 @@
                         <div class="bg-white px-6 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
                             <div class="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
                                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                <input type="text" id="searchGp" onkeyup="filterTable('gp')" placeholder="Search Plate / Company..." class="bg-transparent text-sm outline-none w-44 text-gray-700">
+                                <input type="text" id="searchGp" oninput="filterTable('gp')" placeholder="Search Plate / Company..." class="bg-transparent text-sm outline-none w-44 text-gray-700">
                                 <div class="h-4 border-r border-gray-300"></div>
-                                <select id="filterGpCompany" onchange="filterTable('gp')" class="bg-transparent text-sm outline-none text-gray-700 font-medium cursor-pointer w-40">
-                                    <option value="">All Companies</option>
-                                </select>
+                                <input type="text" id="filterGpCompany" list="sysCompanyList" oninput="filterTable('gp')" placeholder="Filter by Company..." class="bg-transparent text-sm outline-none text-gray-700 font-medium w-40 placeholder-gray-400 border-b border-transparent focus:border-evgreen transition">
                             </div>
                             <div class="flex items-center space-x-3">
-                                <select id="batchGpCompany" class="px-3 py-1.5 border border-gray-300 rounded text-sm outline-none w-36">
-                                    <option value="">Select Target...</option>
-                                </select>
+                                <input type="text" id="batchGpCompany" list="sysCompanyList" placeholder="Target Company..." class="px-3 py-1.5 border border-gray-300 rounded text-sm outline-none w-36 focus:ring-1 focus:ring-evgreen">
                                 <span class="text-gray-300">|</span>
                                 <button onclick="openBatchModal('gp')" class="text-sm font-bold text-blue-600 hover:text-blue-800 transition">Batch Add</button>
                                 <button onclick="openManageModal('gp')" class="text-sm font-bold text-evgreen hover:text-green-700 transition">Manage (Edit/Del)</button>
@@ -166,16 +173,12 @@
                         <div class="bg-white px-6 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
                             <div class="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
                                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                <input type="text" id="searchSp" onkeyup="filterTable('sp')" placeholder="Search Email / Company..." class="bg-transparent text-sm outline-none w-44 text-gray-700">
+                                <input type="text" id="searchSp" oninput="filterTable('sp')" placeholder="Search Email / Company..." class="bg-transparent text-sm outline-none w-44 text-gray-700">
                                 <div class="h-4 border-r border-gray-300"></div>
-                                <select id="filterSpCompany" onchange="filterTable('sp')" class="bg-transparent text-sm outline-none text-gray-700 font-medium cursor-pointer w-40">
-                                    <option value="">All Companies</option>
-                                </select>
+                                <input type="text" id="filterSpCompany" list="sysCompanyList" oninput="filterTable('sp')" placeholder="Filter by Company..." class="bg-transparent text-sm outline-none text-gray-700 font-medium w-40 placeholder-gray-400 border-b border-transparent focus:border-evgreen transition">
                             </div>
                             <div class="flex items-center space-x-3">
-                                <select id="batchSpCompany" class="px-3 py-1.5 border border-gray-300 rounded text-sm outline-none w-36">
-                                    <option value="">Select Target...</option>
-                                </select>
+                                <input type="text" id="batchSpCompany" list="sysCompanyList" placeholder="Target Company..." class="px-3 py-1.5 border border-gray-300 rounded text-sm outline-none w-36 focus:ring-1 focus:ring-evgreen">
                                 <span class="text-gray-300">|</span>
                                 <button onclick="openBatchModal('sp')" class="text-sm font-bold text-blue-600 hover:text-blue-800 transition">Batch Add</button>
                                 <button onclick="openManageModal('sp')" class="text-sm font-bold text-evgreen hover:text-green-700 transition">Manage (Edit/Del)</button>
@@ -194,20 +197,6 @@
                             <button onclick="addRow('spTableBody', 'sp')" class="text-sm text-evgreen font-bold flex items-center bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">+ Add Single Driver</button>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div id="tab3" class="tab-content max-w-4xl mx-auto">
-                <div class="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center space-y-6 mt-10">
-                    <div class="w-24 h-24 bg-green-50 text-evgreen rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <h2 class="text-3xl font-black text-gray-800">Final Processing</h2>
-                    <p class="text-gray-500 text-lg">The engine will merge raw data with cloud configurations to generate corporate-specific PDF invoices and a master summary.</p>
-                    <button id="generateBtn" onclick="submitToFastAPI()" class="mt-10 bg-evgreen hover:bg-green-600 text-white font-black py-5 px-12 rounded-full shadow-lg transition transform hover:-translate-y-1 text-xl flex items-center mx-auto">
-                        Generate & Download ZIP Package
-                    </button>
-                    <p id="loadingMsg" class="hidden text-evgreen font-bold text-lg animate-pulse mt-8">⚙️ Calculating invoices and rendering PDFs... Please wait.</p>
                 </div>
             </div>
         </div>
@@ -281,44 +270,36 @@
             bindFileInputs(); 
         };
 
-        // 动态更新所有下拉框
+        // ✨ 动态提取并生成全局下拉列表 (datalist)
         function syncCompanyList() {
             const dataList = document.getElementById('sysCompanyList');
-            const batchGpSelect = document.getElementById('batchGpCompany');
-            const batchSpSelect = document.getElementById('batchSpCompany');
-            const filterGpSelect = document.getElementById('filterGpCompany');
-            const filterSpSelect = document.getElementById('filterSpCompany');
-            
             dataList.innerHTML = '';
-            const defaultBatch = '<option value="">Select Target...</option>';
-            const defaultFilter = '<option value="">All Companies</option>';
             
-            batchGpSelect.innerHTML = defaultBatch;
-            batchSpSelect.innerHTML = defaultBatch;
-            
-            const currFilterGp = filterGpSelect.value;
-            const currFilterSp = filterSpSelect.value;
-            filterGpSelect.innerHTML = defaultFilter;
-            filterSpSelect.innerHTML = defaultFilter;
-
+            // 扫描费率表，提取所有公司名称存入 datalist
             document.querySelectorAll('#rateTableBody tr').forEach(row => {
                 const td = row.cells[0];
                 const company = td.querySelector('input') ? td.querySelector('input').value.trim() : td.innerText.trim();
                 if(company) {
-                    const opt = `<option value="${company}">${company}</option>`;
                     dataList.innerHTML += `<option value="${company}">`;
-                    batchGpSelect.innerHTML += opt;
-                    batchSpSelect.innerHTML += opt;
-                    filterGpSelect.innerHTML += opt;
-                    filterSpSelect.innerHTML += opt;
                 }
             });
-            
-            if(currFilterGp) filterGpSelect.value = currFilterGp;
-            if(currFilterSp) filterSpSelect.value = currFilterSp;
         }
 
-        // 表格实时检索与过滤核心逻辑
+        // ✨ 核心功能：检查填入的公司是否在费率表中注册
+        function isValidCompany(companyName) {
+            if (!companyName) return false;
+            let exists = false;
+            document.querySelectorAll('#rateTableBody tr').forEach(row => {
+                const td = row.cells[0];
+                const rateCompany = td.querySelector('input') ? td.querySelector('input').value.trim() : td.innerText.trim();
+                if (rateCompany === companyName) {
+                    exists = true;
+                }
+            });
+            return exists;
+        }
+
+        // 表格实时检索与过滤核心逻辑 (车牌和公司名联动模糊搜索)
         function filterTable(type) {
             const searchInput = document.getElementById(type === 'gp' ? 'searchGp' : 'searchSp').value.toLowerCase();
             const filterCompany = document.getElementById(type === 'gp' ? 'filterGpCompany' : 'filterSpCompany').value.toLowerCase();
@@ -421,8 +402,23 @@
             tr.lastElementChild.innerHTML = generateActionButtons(true);
         }
 
+        // ✨ 加入单行保存检验
         function saveRow(btn) {
             const tr = btn.closest('tr');
+            const tbodyId = tr.closest('tbody').id;
+
+            // 如果是 CRM 表格，强制验证填入的公司名
+            if (tbodyId === 'gpTableBody' || tbodyId === 'spTableBody') {
+                const companyInput = tr.cells[1].querySelector('input');
+                if (companyInput) {
+                    const companyName = companyInput.value.trim();
+                    if (companyName !== '' && !isValidCompany(companyName)) {
+                        alert(`Validation Error: The company "${companyName}" is not registered in the Tiered Tariff table. Please add it there first.`);
+                        return; // 中止保存
+                    }
+                }
+            }
+
             tr.classList.remove('editing-row');
             
             const tds = tr.querySelectorAll('td:not(:last-child)');
@@ -431,15 +427,15 @@
                 if (input) {
                     const val = input.value.trim();
                     td.innerHTML = val;
-                    if (index > 0 && tr.closest('tbody').id === 'rateTableBody') td.classList.add('text-blue-600', 'font-bold');
-                    if (index === 1 && tr.closest('tbody').id !== 'rateTableBody') td.classList.add('text-blue-600', 'font-bold');
+                    if (index > 0 && tbodyId === 'rateTableBody') td.classList.add('text-blue-600', 'font-bold');
+                    if (index === 1 && tbodyId !== 'rateTableBody') td.classList.add('text-blue-600', 'font-bold');
                 }
             });
             
             tr.lastElementChild.innerHTML = generateActionButtons(false);
-            if(tr.closest('tbody').id === 'rateTableBody') syncCompanyList();
+            if(tbodyId === 'rateTableBody') syncCompanyList();
             
-            const type = tr.closest('tbody').id === 'gpTableBody' ? 'gp' : (tr.closest('tbody').id === 'spTableBody' ? 'sp' : null);
+            const type = tbodyId === 'gpTableBody' ? 'gp' : (tbodyId === 'spTableBody' ? 'sp' : null);
             if(type) filterTable(type);
         }
 
@@ -474,9 +470,15 @@
         // --- Batch Add Modal Logic ---
         function openBatchModal(type) {
             const selectId = type === 'gp' ? 'batchGpCompany' : 'batchSpCompany';
-            const company = document.getElementById(selectId).value;
+            const company = document.getElementById(selectId).value.trim();
             
-            if (!company) { alert("Please select a Target Company from the dropdown first."); return; }
+            if (!company) { alert("Please enter or select a Target Company first."); return; }
+            
+            // ✨ 验证公司
+            if (!isValidCompany(company)) {
+                alert(`Validation Error: The company "${company}" is not registered in the Tiered Tariff table. Please add it there first.`);
+                return;
+            }
 
             currentBatchType = type;
             document.getElementById('batchModalCompany').value = company;
@@ -510,11 +512,16 @@
             alert(`Added ${items.length} items to ${company}. Sync to Cloud to save.`);
         }
 
-        // ✨ --- Manage Company Modal Logic (Edit/Delete specific company) ---
+        // --- Manage Company Modal Logic ---
         function openManageModal(type) {
             const selectId = type === 'gp' ? 'batchGpCompany' : 'batchSpCompany';
-            const company = document.getElementById(selectId).value;
-            if (!company) { alert("Please select a Target Company from the dropdown first."); return; }
+            const company = document.getElementById(selectId).value.trim();
+            
+            if (!company) { alert("Please enter or select a Target Company first."); return; }
+            if (!isValidCompany(company)) {
+                alert(`Validation Error: The company "${company}" is not registered in the Tiered Tariff table.`);
+                return;
+            }
 
             currentManageType = type;
             currentManageCompany = company;
@@ -564,7 +571,7 @@
             const tbodyId = currentManageType === 'gp' ? 'gpTableBody' : 'spTableBody';
             const tbody = document.getElementById(tbodyId);
             
-            // 1. 从主表格中移除该公司的所有旧数据
+            // 1. Remove old data from the main table
             const rows = document.querySelectorAll(`#${tbodyId} tr`);
             rows.forEach(row => {
                 const tdComp = row.cells[1];
@@ -574,7 +581,7 @@
                 }
             });
 
-            // 2. 将浮窗内剩余的、修改过的数据重新插回主表格
+            // 2. Re-insert updated data
             const inputs = document.querySelectorAll('#manageModalList input');
             let addCount = 0;
             inputs.forEach(input => {
