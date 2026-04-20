@@ -14,29 +14,29 @@
 <div class="flex-1 overflow-y-auto p-8 bg-gray-50 no-scrollbar">
     
     <div id="sign-tab-distribute" class="block max-w-5xl mx-auto">
-        <h2 class="text-2xl font-black text-gray-800 mb-6">Launch New Signature Request</h2>
+        <h2 class="text-2xl font-black text-gray-800 mb-6">Launch Form A Signature</h2>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             
             <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
                 <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Form A (Dual-Sign)</h3>
-                <p class="text-sm text-gray-500 mb-8 h-10">Standard Form A workflow. Sent sequentially to Electrical Specialist (ES) and LEW.</p>
-                <button onclick="window.openFormAModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition">
-                    Select Form A
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Form A (ES Only)</h3>
+                <p class="text-sm text-gray-500 mb-8 h-10">Single endorsement process. Sent directly to the Electrical Specialist (ES) for sign-off.</p>
+                <button onclick="window.openSingleModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition">
+                    Dispatch Single Form A
                 </button>
             </div>
 
             <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
                 <div class="w-16 h-16 bg-green-50 text-evgreen rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Sequential Test Form</h3>
-                <p class="text-sm text-gray-500 mb-8 h-10">Two-step verification process. Sent sequentially to ES, then to LEW.</p>
-                <button onclick="window.openTestModal()" class="w-full bg-evgreen hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow transition">
-                    Select Test Form
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Form A (ES + LEW)</h3>
+                <p class="text-sm text-gray-500 mb-8 h-10">Sequential dual-sign workflow. Sent to ES first, then automatically forwarded to LEW.</p>
+                <button onclick="window.openDualModal()" class="w-full bg-evgreen hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow transition">
+                    Dispatch Dual Form A
                 </button>
             </div>
 
@@ -70,11 +70,11 @@
     </div>
 </div>
 
-<div id="formAModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center">
-    <div class="bg-white p-8 rounded-3xl shadow-2xl w-[500px] transform transition-all border border-gray-100">
+<div id="singleModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl w-[450px] transform transition-all border border-gray-100">
         <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-black text-gray-800">Dispatch Form A</h3>
-            <button onclick="window.closeFormAModal()" class="text-gray-400 hover:text-gray-600">
+            <h3 class="text-xl font-black text-gray-800">Dispatch Form A (Single)</h3>
+            <button onclick="window.closeSingleModal()" class="text-gray-400 hover:text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
@@ -83,7 +83,7 @@
             <div class="space-y-2">
                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Document Naming</label>
                 <div class="relative">
-                    <input type="text" id="faPrefix" placeholder="Project Name / Client ID" class="w-full pl-4 pr-24 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold">
+                    <input type="text" id="sinPrefix" placeholder="Project Name / Client ID" class="w-full pl-4 pr-24 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold">
                     <span class="absolute right-4 top-3.5 text-xs text-gray-400 font-medium">Form A</span>
                 </div>
             </div>
@@ -91,59 +91,61 @@
             <div class="border-t border-gray-100 my-2"></div>
 
             <div class="space-y-3">
-                <label class="block text-xs font-black text-blue-600 uppercase tracking-wider">Step 1: Inspector</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="faNameES" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                    <input type="email" id="faEmailES" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                </div>
-            </div>
-
-            <div class="space-y-3">
-                <label class="block text-xs font-black text-gray-600 uppercase tracking-wider">Step 2: ES</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="faNameLEW" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
-                    <input type="email" id="faEmailLEW" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
+                <label class="block text-xs font-black text-blue-600 uppercase tracking-wider">Electrical Specialist (ES)</label>
+                <div class="grid grid-cols-1 gap-3">
+                    <input type="text" id="sinNameES" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <input type="email" id="sinEmailES" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
             </div>
         </div>
 
         <div class="mt-8 flex flex-col space-y-3">
-            <button onclick="window.sendFormARequest(event)" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Initiate Signature</button>
-            <button onclick="window.closeFormAModal()" class="w-full py-2 text-gray-400 font-medium hover:text-gray-600 text-sm">Cancel</button>
+            <button onclick="window.sendSingleRequest(event)" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Initiate Signature</button>
+            <button onclick="window.closeSingleModal()" class="w-full py-2 text-gray-400 font-medium hover:text-gray-600 text-sm">Cancel</button>
         </div>
     </div>
 </div>
 
-<div id="testModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center">
+<div id="dualModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center">
     <div class="bg-white p-8 rounded-3xl shadow-2xl w-[500px] transform transition-all border border-gray-100">
-        <div class="flex justify-between items-center mb-8">
-            <h3 class="text-xl font-black text-gray-800">Sequential Request</h3>
-            <button onclick="window.closeTestModal()" class="text-gray-400 hover:text-gray-600">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-black text-gray-800">Dispatch Form A (Dual)</h3>
+            <button onclick="window.closeDualModal()" class="text-gray-400 hover:text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
         
-        <div class="space-y-6">
-            <div class="space-y-3">
-                <label class="block text-xs font-black text-evgreen uppercase tracking-wider">Step 1: Electrical Specialist (ES)</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="testNameES" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
-                    <input type="email" id="testEmailES" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
+        <div class="space-y-5">
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Document Naming</label>
+                <div class="relative">
+                    <input type="text" id="dualPrefix" placeholder="Project Name / Client ID" class="w-full pl-4 pr-24 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm font-bold">
+                    <span class="absolute right-4 top-3.5 text-xs text-gray-400 font-medium">Form A</span>
                 </div>
             </div>
-            <div class="border-t border-dashed border-gray-200"></div>
+
+            <div class="border-t border-gray-100 my-2"></div>
+
             <div class="space-y-3">
-                <label class="block text-xs font-black text-gray-600 uppercase tracking-wider">Step 2: Licensed Elec. Worker (LEW)</label>
+                <label class="block text-xs font-black text-evgreen uppercase tracking-wider">Step 1: ES</label>
                 <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="testNameLEW" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
-                    <input type="email" id="testEmailLEW" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
+                    <input type="text" id="dualNameES" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
+                    <input type="email" id="dualEmailES" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <label class="block text-xs font-black text-gray-600 uppercase tracking-wider">Step 2: LEW</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="dualNameLEW" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
+                    <input type="email" id="dualEmailLEW" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
                 </div>
             </div>
         </div>
 
         <div class="mt-8 flex flex-col space-y-3">
-            <button onclick="window.sendTestRequest(event)" class="w-full bg-evgreen text-white font-bold py-3 rounded-xl shadow hover:bg-green-600 transition">Confirm & Dispatch</button>
-            <button onclick="window.closeTestModal()" class="w-full py-2 text-gray-400 font-medium hover:text-gray-600 text-sm">Cancel</button>
+            <button onclick="window.sendDualRequest(event)" class="w-full bg-evgreen text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-600 transition">Initiate Sequential Signature</button>
+            <button onclick="window.closeDualModal()" class="w-full py-2 text-gray-400 font-medium hover:text-gray-600 text-sm">Cancel</button>
         </div>
     </div>
 </div>
@@ -169,12 +171,12 @@ window.switchSignTab = function(tabName) {
 };
 
 // --- Modal 控制 ---
-window.openTestModal = function() { document.getElementById('testModal').classList.remove('hidden'); };
-window.closeTestModal = function() { document.getElementById('testModal').classList.add('hidden'); };
-window.openFormAModal = function() { document.getElementById('formAModal').classList.remove('hidden'); };
-window.closeFormAModal = function() { document.getElementById('formAModal').classList.add('hidden'); };
+window.openSingleModal = function() { document.getElementById('singleModal').classList.remove('hidden'); };
+window.closeSingleModal = function() { document.getElementById('singleModal').classList.add('hidden'); };
+window.openDualModal = function() { document.getElementById('dualModal').classList.remove('hidden'); };
+window.closeDualModal = function() { document.getElementById('dualModal').classList.add('hidden'); };
 
-// --- 统一的接口请求逻辑 ---
+// --- 核心调度函数 (附带提取直接签署链接能力) ---
 window.executeDispatch = async function(btn, endpoint, payloadData, modalCloser) {
     const originalText = btn.innerText;
     btn.innerText = "Dispatching...";
@@ -191,14 +193,26 @@ window.executeDispatch = async function(btn, endpoint, payloadData, modalCloser)
         });
         
         const result = await res.json();
-        const isSuccess = result.id || (Array.isArray(result) && result.length > 0 && result[0].id);
         
-        if(isSuccess) { 
-            alert("✅ Success! The signature invitation has been dispatched.");
+        // 1. 如果后端直接提取出了签署链接 (绕过邮箱测试)
+        if(result.sign_links && Object.keys(result.sign_links).length > 0) { 
+            let msg = "✅ 创建成功！\n系统已提取出直接签署链接：\n";
+            if(result.sign_links.ES) msg += `\n[ES 签署入口]: \n${result.sign_links.ES}\n`;
+            if(result.sign_links.LEW) msg += `\n[LEW 签署入口]: \n${result.sign_links.LEW}\n`;
+            
+            alert(msg);
             modalCloser(); 
             window.switchSignTab('track'); 
-        } else {
-            alert("❌ Dispatch Failed: " + (result.message || "Unknown Error. Check backend logs."));
+        } 
+        // 2. 正常 API 成功响应
+        else if (result.id || (Array.isArray(result) && result.length > 0 && result[0].id)) {
+            alert("✅ 派发成功！邮件已交由 DocuSeal 处理。");
+            modalCloser(); 
+            window.switchSignTab('track'); 
+        } 
+        // 3. API 抛出错误
+        else {
+            alert("❌ Dispatch Failed: " + (result.message || "Unknown Error."));
         }
     } catch (e) {
         alert("⚠️ Network Error: Unable to reach API.");
@@ -208,49 +222,48 @@ window.executeDispatch = async function(btn, endpoint, payloadData, modalCloser)
     }
 }
 
-// --- 发送 Form A ---
-window.sendFormARequest = async function(event) {
+// --- 发送 Form A (单人版) ---
+window.sendSingleRequest = async function(event) {
     const data = {
-        prefix: document.getElementById('faPrefix').value.trim(),
-        name_es: document.getElementById('faNameES').value.trim(),
-        email_es: document.getElementById('faEmailES').value.trim(),
-        name_lew: document.getElementById('faNameLEW').value.trim(),
-        email_lew: document.getElementById('faEmailLEW').value.trim()
+        prefix: document.getElementById('sinPrefix').value.trim(),
+        name_es: document.getElementById('sinNameES').value.trim(),
+        email_es: document.getElementById('sinEmailES').value.trim()
     };
     
-    if(!data.name_es || !data.email_es || !data.name_lew || !data.email_lew) {
-        return alert("⚠️ Action Required: Please fill in all fields for ES and LEW.");
+    if(!data.name_es || !data.email_es) {
+        return alert("⚠️ Action Required: Please fill in the ES details.");
     }
     
-    await window.executeDispatch(event.target, '/api/create-signature-form-a', data, window.closeFormAModal);
+    await window.executeDispatch(event.target, '/api/create-signature-form-a-single', data, window.closeSingleModal);
     
     // 清空输入
-    document.getElementById('faPrefix').value = '';
-    document.getElementById('faNameES').value = '';
-    document.getElementById('faEmailES').value = '';
-    document.getElementById('faNameLEW').value = '';
-    document.getElementById('faEmailLEW').value = '';
+    document.getElementById('sinPrefix').value = '';
+    document.getElementById('sinNameES').value = '';
+    document.getElementById('sinEmailES').value = '';
 };
 
-// --- 发送 Test Form ---
-window.sendTestRequest = async function(event) {
+// --- 发送 Form A (双人版) ---
+window.sendDualRequest = async function(event) {
     const data = {
-        name_es: document.getElementById('testNameES').value.trim(),
-        email_es: document.getElementById('testEmailES').value.trim(),
-        name_lew: document.getElementById('testNameLEW').value.trim(),
-        email_lew: document.getElementById('testEmailLEW').value.trim()
+        prefix: document.getElementById('dualPrefix').value.trim(),
+        name_es: document.getElementById('dualNameES').value.trim(),
+        email_es: document.getElementById('dualEmailES').value.trim(),
+        name_lew: document.getElementById('dualNameLEW').value.trim(),
+        email_lew: document.getElementById('dualEmailLEW').value.trim()
     };
+    
     if(!data.name_es || !data.email_es || !data.name_lew || !data.email_lew) {
-        return alert("⚠️ Action Required: Fill in all fields.");
+        return alert("⚠️ Action Required: Please fill in all fields for both ES and LEW.");
     }
 
-    await window.executeDispatch(event.target, '/api/create-signature-request-test', data, window.closeTestModal);
+    await window.executeDispatch(event.target, '/api/create-signature-form-a', data, window.closeDualModal);
     
     // 清空输入
-    document.getElementById('testNameES').value = ''; 
-    document.getElementById('testEmailES').value = '';
-    document.getElementById('testNameLEW').value = ''; 
-    document.getElementById('testEmailLEW').value = '';
+    document.getElementById('dualPrefix').value = '';
+    document.getElementById('dualNameES').value = '';
+    document.getElementById('dualEmailES').value = '';
+    document.getElementById('dualNameLEW').value = '';
+    document.getElementById('dualEmailLEW').value = '';
 };
 
 // --- 加载追踪记录 ---
@@ -276,7 +289,7 @@ window.loadSubmissions = async function() {
             const statusLabel = isDone ? 'COMPLETED' : (item.status ? item.status.replace('_', ' ').toUpperCase() : 'PENDING');
             const statusColor = isDone ? 'text-green-600 bg-green-50' : 'text-orange-500 bg-orange-50';
             
-            // 优先使用自定义名称 (item.name)
+            // 优先使用自定义名称
             const docName = item.name || (item.template && item.template.name) || 'Document Request';
             
             // 格式化时间戳 (新加坡时间)

@@ -170,6 +170,37 @@ async def get_submissions(user: dict = Depends(get_current_user)):
     response = requests.get(f"{DOCUSEAL_BASE}/submissions", headers=headers)
     return response.json() if response.ok else []
 
+@app.post("/api/create-signature-form-a-single")
+async def create_signature_form_a_single(data: dict, user: dict = Depends(get_current_user)):
+    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY"), "Content-Type": "application/json"}
+    
+    # 调取新模板 ID
+    template_id = os.environ.get("TEMPLATE_ID_FORM_A_SINGLE")
+    prefix = data.get("prefix", "").strip()
+    
+    # 动态邮件主题：[前缀] Form A Inspection
+    subject = f"{prefix} Form A Inspection" if prefix else "Form A Inspection"
+
+    payload = {
+        "template_id": int(template_id),
+        "name": f"{prefix} Form A (Single)",
+        "send_email": True,
+        "message": {
+            "subject": subject,
+            "body": f"Hello {data.get('name_es')},\n\nPlease complete the Form A via the link: {{{{submitter.link}}}}"
+        },
+        "submitters": [
+            {
+                "role": "ES",  # 必须与新模板中的角色名称严格一致
+                "email": data.get("email_es"), 
+                "name": data.get("name_es")
+            }
+        ]
+    }
+    
+    response = requests.post(f"{DOCUSEAL_BASE}/submissions", json=payload, headers=headers)
+    return response.json()
+
 @app.get("/api/get-document-download/{sub_id}")
 async def get_download(sub_id: str, user: dict = Depends(get_current_user)):
     headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY")}
