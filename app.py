@@ -103,6 +103,66 @@ async def create_signature_test(data: dict, user: dict = Depends(get_current_use
     response = requests.post(f"{DOCUSEAL_BASE}/submissions", json=payload, headers=headers)
     return response.json()
 
+@app.post("/api/create-signature-form-a")
+async def create_signature_form_a(data: dict, user: dict = Depends(get_current_user)):
+    """处理 Form A 分发：修复邮件静默发送失败问题"""
+    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY"), "Content-Type": "application/json"}
+    
+    template_id = os.environ.get("TEMPLATE_ID_FORM_A")
+    if not template_id:
+        return {"error": True, "message": "环境配置缺失：未找到 TEMPLATE_ID_FORM_A"}
+    
+    prefix = data.get("prefix", "").strip()
+    
+    # 1. 统一后台追溯名称
+    submission_name = f"{prefix} Form A" if prefix else "Form A"
+    
+    # 2. 制定统一的全局邮件内容 (DocuSeal API 仅支持全局级别自定义)
+    unified_subject = f"{prefix} Form A Inspection" if prefix else "Form A Inspection"
+    unified_body = (
+        f"Hello,\n\n"
+        f"You have been requested to review and sign the Form A for project {prefix}.\n"
+        f"Please click the link below to access your designated section:\n\n"
+        f"{{{{submitter.link}}}}\n\n"
+        f"Thank you."
+    )
+
+    # 3. 严格遵循官方结构的 Payload
+    payload = {
+        "template_id": int(template_id),
+        "name": submission_name,
+        "send_email": True,
+        # 核心修复：message 必须在最外层！
+        "message": {
+            "subject": unified_subject,
+            "body": unified_body
+        },
+        "submitters": [
+            {
+                "role": "ES", 
+                "email": data.get("email_es"), 
+                "name": data.get("name_es")
+            },
+            {
+                "role": "LEW", 
+                "email": data.get("email_lew"), 
+                "name": data.get("name_lew")
+            }
+        ]
+    }
+    
+    try:
+        response = requests.post(f"{DOCUSEAL_BASE}/submissions", json=payload, headers=headers)
+        
+        if not response.ok:
+            print(f"========== DOCUSEAL 拒绝请求 ==========\n{response.text}\n=======================================")
+            return {"error": True, "message": f"DocuSeal 拒绝: {response.text}"}
+            
+        return response.json()
+    except Exception as e:
+        return {"error": True, "message": f"服务器内部连接错误: {str(e)}"}
+    
+    
 @app.get("/api/get-signing-submissions")
 async def get_submissions(user: dict = Depends(get_current_user)):
     headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY")}
