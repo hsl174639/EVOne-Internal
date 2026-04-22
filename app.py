@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from supabase import create_client, Client
 
 # ReportLab PDF 绘图库导入
 from reportlab.lib.pagesizes import A4
@@ -26,8 +27,28 @@ load_dotenv()
 
 app = FastAPI(title="EVOne Internal System API")
 
+import os
+import requests
+from typing import List
+from datetime import datetime
+import warnings
+
+from dotenv import load_dotenv
+from jose import JWTError, jwt
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from supabase import create_client, Client
+
+warnings.filterwarnings('ignore')
+load_dotenv()
+
+app = FastAPI(title="EVOne Internal System API")
+
 # ==========================================
-# 1. 中间件与静态文件/模板设置
+# 1. Base Configuration
 # ==========================================
 app.add_middleware(
     CORSMiddleware,
@@ -40,13 +61,16 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# ==========================================
-# 2. 全局环境与鉴权配置
-# ==========================================
 security = HTTPBearer()
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
 DOCUSEAL_API_KEY = os.environ.get("DOCUSEAL_API_KEY")
-DOCUSEAL_URL = "https://api.docuseal.com"
+DOCUSEAL_BASE = "https://api.docuseal.com"
+
+# Initialize Supabase Admin
+supabase_admin: Client = create_client(
+    os.environ.get("SUPABASE_URL"), 
+    os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+)
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
@@ -54,184 +78,177 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
         return payload
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalid or expired. 请重新登录。",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=401, detail="Auth failed")
 
 # ==========================================
-# 3. 页面路由 (Jinja2 Templates)
+# 2. Config & Page Routes
 # ==========================================
 @app.get("/")
 async def serve_billing(request: Request):
-    # 默认主页：结算系统
     return templates.TemplateResponse(request=request, name="billing.html")
 
 @app.get("/e-sign")
 async def serve_signing(request: Request):
-    # 电子签署门户
     return templates.TemplateResponse(request=request, name="signing.html")
 
 @app.get("/config")
 async def get_config():
-    # 提供给前端初始化 Supabase SDK
     return {
         "supabase_url": os.environ.get("SUPABASE_URL"),
         "supabase_key": os.environ.get("SUPABASE_ANON_KEY")
     }
 
 # ==========================================
-# 4. DocuSeal 电子签署 API (严格匹配官方文档)
+# 3. Core API Logic
 # ==========================================
 
-# 基础 URL 绝对不能包含 /api/v1
-DOCUSEAL_BASE = "https://api.docuseal.com"
-
-@app.post("/api/create-signature-request-test")
-async def create_signature_test(data: dict, user: dict = Depends(get_current_user)):
-    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY"), "Content-Type": "application/json"}
-    payload = {
-        "template_id": int(os.environ.get("TEMPLATE_ID_TEST")),
-        "send_email": True,
-        "submitters": [
-            {"role": "ES", "email": data.get("email_es"), "name": data.get("name_es")},
-            {"role": "LEW", "email": data.get("email_lew"), "name": data.get("name_lew")}
-        ]
-    }
-    # 正确路径: /submissions
-    response = requests.post(f"{DOCUSEAL_BASE}/submissions", json=payload, headers=headers)
-    return response.json()
-
-@app.post("/api/create-signature-form-a")
-async def create_signature_form_a(data: dict, user: dict = Depends(get_current_user)):
-    """处理 Form A 分发：修复邮件静默发送失败问题"""
-    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY"), "Content-Type": "application/json"}
+@app.post("/api/create-signature")
+async def create_signature(data: dict, user: dict = Depends(get_current_user)):
+    headers = {"X-Auth-Token": DOCUSEAL_API_KEY, "Content-Type": "application/json"}
     
-    template_id = os.environ.get("TEMPLATE_ID_FORM_A")
+    # 获取新增的 category 字段
+    category = data.get("category", "Internal").strip()
+    form_type = data.get("form_type")
+    signers_count = str(data.get("signers_count", "1"))
+    prefix = data.get("prefix", "").strip()
+    
+    template_id = None
+    submitters = []
+
+    # 按签署人数的极致简化映射逻辑 (1人 ES, 2人 ES+LEW, 3人 Insp+ES+LEW)
+    if form_type == "Form A":
+        if signers_count == "1":
+            template_id = os.environ.get("TEMPLATE_ID_FORM_A_1P")
+            submitters = [{"role": "ES", "email": data.get("email_es"), "name": data.get("name_es")}]
+        else:
+            template_id = os.environ.get("TEMPLATE_ID_FORM_A_2P")
+            submitters = [
+                {"role": "ES", "email": data.get("email_es"), "name": data.get("name_es")},
+                {"role": "LEW", "email": data.get("email_lew"), "name": data.get("name_lew")}
+            ]
+    elif form_type in ["Form D", "Form 1"]:
+        suffix = "FORM_D" if form_type == "Form D" else "FORM_1"
+        if signers_count == "3":
+            template_id = os.environ.get(f"TEMPLATE_ID_{suffix}_3P")
+            submitters = [
+                {"role": "Inspector", "email": data.get("email_inspector"), "name": data.get("name_inspector")},
+                {"role": "ES", "email": data.get("email_es"), "name": data.get("name_es")},
+                {"role": "LEW", "email": data.get("email_lew"), "name": data.get("name_lew")}
+            ]
+        else:
+            template_id = os.environ.get(f"TEMPLATE_ID_{suffix}_2P")
+            submitters = [
+                {"role": "ES", "email": data.get("email_es"), "name": data.get("name_es")},
+                {"role": "LEW", "email": data.get("email_lew"), "name": data.get("name_lew")}
+            ]
+
     if not template_id:
-        return {"error": True, "message": "环境配置缺失：未找到 TEMPLATE_ID_FORM_A"}
-    
-    prefix = data.get("prefix", "").strip()
-    
-    # 1. 统一后台追溯名称
-    submission_name = f"{prefix} Form A" if prefix else "Form A"
-    
-    # 2. 制定统一的全局邮件内容 (DocuSeal API 仅支持全局级别自定义)
-    unified_subject = f"{prefix} Form A Inspection" if prefix else "Form A Inspection"
-    unified_body = (
-        f"Hello,\n\n"
-        f"You have been requested to review and sign the Form A for project {prefix}.\n"
-        f"Please click the link below to access your designated section:\n\n"
-        f"{{{{submitter.link}}}}\n\n"
-        f"Thank you."
-    )
+        return {"error": True, "message": "Template mapping failed"}
 
-    # 3. 严格遵循官方结构的 Payload
-    payload = {
-        "template_id": int(template_id),
-        "name": submission_name,
-        "send_email": True,
-        # 核心修复：message 必须在最外层！
-        "message": {
-            "subject": unified_subject,
-            "body": unified_body
-        },
-        "submitters": [
-            {
-                "role": "ES", 
-                "email": data.get("email_es"), 
-                "name": data.get("name_es")
-            },
-            {
-                "role": "LEW", 
-                "email": data.get("email_lew"), 
-                "name": data.get("name_lew")
-            }
-        ]
-    }
-    
-    try:
-        response = requests.post(f"{DOCUSEAL_BASE}/submissions", json=payload, headers=headers)
-        
-        if not response.ok:
-            print(f"========== DOCUSEAL 拒绝请求 ==========\n{response.text}\n=======================================")
-            return {"error": True, "message": f"DocuSeal 拒绝: {response.text}"}
-            
-        return response.json()
-    except Exception as e:
-        return {"error": True, "message": f"服务器内部连接错误: {str(e)}"}
-    
-    
-@app.get("/api/get-signing-submissions")
-async def get_submissions(user: dict = Depends(get_current_user)):
-    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY")}
-    # 正确路径: /submissions
-    response = requests.get(f"{DOCUSEAL_BASE}/submissions", headers=headers)
-    return response.json() if response.ok else []
-
-@app.post("/api/create-signature-form-a-single")
-async def create_signature_form_a_single(data: dict, user: dict = Depends(get_current_user)):
-    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY"), "Content-Type": "application/json"}
-    
-    # 调取新模板 ID
-    template_id = os.environ.get("TEMPLATE_ID_FORM_A_SINGLE")
-    prefix = data.get("prefix", "").strip()
-    
-    # 动态邮件主题：[前缀] Form A Inspection
-    subject = f"{prefix} Form A Inspection" if prefix else "Form A Inspection"
+    # 将 Category 标签强行注入 Document Name
+    base_name = f"{prefix} {form_type}" if prefix else form_type
+    document_name = f"[{category}] {base_name}"
 
     payload = {
         "template_id": int(template_id),
-        "name": f"{prefix} Form A (Single)",
+        "name": document_name,
         "send_email": True,
         "message": {
-            "subject": subject,
-            "body": f"Hello {data.get('name_es')},\n\nPlease complete the Form A via the link: {{{{submitter.link}}}}"
+            "subject": document_name,
+            "body": f"Hello {{submitter.name}},\n\nPlease complete the document via the link: {{submitter.link}}"
         },
-        "submitters": [
-            {
-                "role": "ES",  # 必须与新模板中的角色名称严格一致
-                "email": data.get("email_es"), 
-                "name": data.get("name_es")
-            }
-        ]
+        "submitters": submitters
     }
     
     response = requests.post(f"{DOCUSEAL_BASE}/submissions", json=payload, headers=headers)
     return response.json()
+
 
 @app.get("/api/get-document-download/{sub_id}")
 async def get_download(sub_id: str, user: dict = Depends(get_current_user)):
-    headers = {"X-Auth-Token": os.environ.get("DOCUSEAL_API_KEY")}
-    
+    headers = {"X-Auth-Token": DOCUSEAL_API_KEY}
     try:
-        # 正确路径: /submissions/{id}
-        response = requests.get(f"{DOCUSEAL_BASE}/submissions/{sub_id}", headers=headers)
+        res = requests.get(f"{DOCUSEAL_BASE}/submissions/{sub_id}", headers=headers)
+        if not res.ok: return {"error": True, "message": "DocuSeal Record not found"}
         
-        if response.ok:
-            data = response.json()
-            
-            # 根据官方数据结构，获取顶层的 documents 数组
-            docs = data.get("documents", [])
-            if docs and len(docs) > 0 and docs[0].get("url"):
-                return {"download_url": docs[0]["url"]}
+        data = res.json()
+        docs = data.get("documents", [])
+        download_url = docs[0].get("url") if docs else None
+        
+        if data.get("status") == "completed" and download_url:
+            file_res = requests.get(download_url)
+            if file_res.ok:
+                raw_name = data.get("name", "")
                 
-            # 备用：深入每个签署人寻找
-            for sub in data.get("submitters", []):
-                for doc in sub.get("documents", []):
-                    if doc.get("url"):
-                        return {"download_url": doc["url"]}
-            
-            return {"error": True, "message": "API连接成功，但DocuSeal尚未生成PDF链接。请确保全员已完成签署。"}
-            
-        return {"error": True, "message": f"找不到该记录，DocuSeal返回404。ID: {sub_id}"}
-        
-    except Exception as e:
-        return {"error": True, "message": f"服务器解析失败: {str(e)}"}
+                # 1. 解析 Form 文件夹
+                form_folder = "Others"
+                if "Form A" in raw_name: form_folder = "Form A"
+                elif "Form D" in raw_name: form_folder = "Form D"
+                elif "Form 1" in raw_name: form_folder = "Form 1"
 
+                # 2. 解析 Category 文件夹
+                cat_folder = "Internal" if "[Internal]" in raw_name else "External"
+
+                filename = f"{datetime.now().strftime('%Y%m%d')}_{raw_name}.pdf"
+                safe_name = "".join([c for c in filename if c.isalnum() or c in (" ", "_", ".", "-")]).strip()
+                
+                # 终极路径结构: FormBucket/Internal/Form A/20260421_Internal_Project_Form_A.pdf
+                final_path = f"{cat_folder}/{form_folder}/{safe_name}"
+                
+                supabase_admin.storage.from_("Form").upload(
+                    path=final_path,
+                    file=file_res.content,
+                    file_options={"content-type": "application/pdf", "x-upsert": "true"}
+                )
+        return {"download_url": download_url}
+    except Exception as e:
+        return {"error": True, "message": str(e)}
+
+@app.get("/api/get-signing-submissions")
+async def get_submissions(user: dict = Depends(get_current_user)):
+    headers = {"X-Auth-Token": DOCUSEAL_API_KEY}
+    response = requests.get(f"{DOCUSEAL_BASE}/submissions", headers=headers)
+    return response.json() if response.ok else []
+
+@app.get("/api/get-document-download/{sub_id}")
+async def get_download(sub_id: str, user: dict = Depends(get_current_user)):
+    headers = {"X-Auth-Token": DOCUSEAL_API_KEY}
+    try:
+        res = requests.get(f"{DOCUSEAL_BASE}/submissions/{sub_id}", headers=headers)
+        if not res.ok: return {"error": True, "message": "DocuSeal Record not found"}
+        
+        data = res.json()
+        docs = data.get("documents", [])
+        download_url = docs[0].get("url") if docs else None
+        
+        if data.get("status") == "completed" and download_url:
+            file_res = requests.get(download_url)
+            if file_res.ok:
+                raw_name = data.get("name", "")
+                # Logic to determine folder within Bucket 'Form'
+                folder = "Others"
+                if "Form A" in raw_name: folder = "Form A"
+                elif "Form D" in raw_name: folder = "Form D"
+                elif "Form 1" in raw_name: folder = "Form 1"
+
+                filename = f"{datetime.now().strftime('%Y%m%d')}_{raw_name}.pdf"
+                safe_name = "".join([c for c in filename if c.isalnum() or c in (" ", "_", ".", "-")]).strip()
+                
+                # Upload to Bucket 'Form' inside corresponding folder
+                supabase_admin.storage.from_("Form").upload(
+                    path=f"{folder}/{safe_name}",
+                    file=file_res.content,
+                    file_options={"content-type": "application/pdf", "x-upsert": "true"}
+                )
+        return {"download_url": download_url}
+    except Exception as e:
+        return {"error": True, "message": str(e)}
 # ==========================================
-# 5. Billing 结算核心处理 API 
+# 4. Billing 逻辑 (保持上传版本)
+# ==========================================
+# 此处保留你原有的 process_pdf 逻辑入口...
+# ==========================================
+# 5. Billing 结算核心处理 API (维持原样)
 # ==========================================
 async def load_dataframe(file: UploadFile, sheet_name=None):
     if not file: raise ValueError("File is missing!")

@@ -1,341 +1,329 @@
 {% extends "base.html" %}
 
-{% block title %}E-Sign Portal | EVOne{% endblock %}
-
 {% block content %}
-<header class="bg-white border-b border-gray-200 px-8 pt-6 z-10 shadow-sm">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Electronic Signature Portal</h1>
-    <div class="flex space-x-8 border-b border-gray-200">
-        <button onclick="window.switchSignTab('distribute')" id="tab-btn-distribute" class="pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm transition">1. Distribute Request</button>
-        <button onclick="window.switchSignTab('track')" id="tab-btn-track" class="pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm transition">2. Track & Download</button>
-    </div>
-</header>
-
-<div class="flex-1 overflow-y-auto p-8 bg-gray-50 no-scrollbar">
+<div class="container mx-auto p-6 max-w-6xl">
     
-    <div id="sign-tab-distribute" class="block max-w-5xl mx-auto">
-        <h2 class="text-2xl font-black text-gray-800 mb-6">Launch Form A Signature</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
-                <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Form A (ES Only)</h3>
-                <p class="text-sm text-gray-500 mb-8 h-10">Single endorsement process. Sent directly to the Electrical Specialist (ES) for sign-off.</p>
-                <button onclick="window.openSingleModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition">
-                    Dispatch Single Form A
-                </button>
-            </div>
-
-            <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
-                <div class="w-16 h-16 bg-green-50 text-evgreen rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Form A (ES + LEW)</h3>
-                <p class="text-sm text-gray-500 mb-8 h-10">Sequential dual-sign workflow. Sent to ES first, then automatically forwarded to LEW.</p>
-                <button onclick="window.openDualModal()" class="w-full bg-evgreen hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow transition">
-                    Dispatch Dual Form A
-                </button>
-            </div>
-
-        </div>
+    <div class="flex space-x-4 mb-8 border-b border-gray-200">
+        <button onclick="switchTab('create')" id="tab-create-btn" class="py-2 px-4 font-bold border-b-2 border-indigo-600 text-indigo-600 transition-all">
+            Create Workflow
+        </button>
+        <button onclick="switchTab('trace')" id="tab-trace-btn" class="py-2 px-4 font-bold text-gray-500 hover:text-indigo-600 transition-all">
+            Trace & Sync
+        </button>
     </div>
 
-    <div id="sign-tab-track" class="hidden max-w-5xl mx-auto">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <h3 class="font-bold text-gray-800 text-lg">Account History & Status</h3>
-                <button onclick="window.loadSubmissions()" class="text-sm text-evgreen font-bold flex items-center hover:opacity-75">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    Refresh List
-                </button>
+    <div id="tab-create" class="block">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">New Signature Request</h2>
+        <form id="signForm" class="space-y-6 bg-white p-6 shadow-lg rounded-xl border border-gray-100">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Category</label>
+                    <select id="category" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <option value="Internal">Internal</option>
+                        <option value="External">External</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Form Type</label>
+                    <select id="form_type" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500" onchange="updateSignerOptions()">
+                        <option value="Form A">Form A</option>
+                        <option value="Form D">Form D</option>
+                        <option value="Form 1">Form 1</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Signers</label>
+                    <select id="signers_count" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500" onchange="toggleInputs()"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Form Name</label>
+                    <input type="text" id="prefix" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Project Alpha" required>
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-white text-gray-400 text-xs uppercase border-b border-gray-100">
-                        <tr>
-                            <th class="px-6 py-4 font-medium">Document / Submission ID</th>
-                            <th class="px-6 py-4 font-medium">Distribution Time</th>
-                            <th class="px-6 py-4 font-medium">Current Status</th>
-                            <th class="px-6 py-4 font-medium text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-50" id="submissionTableBody">
-                        </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div id="singleModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center">
-    <div class="bg-white p-8 rounded-3xl shadow-2xl w-[450px] transform transition-all border border-gray-100">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-black text-gray-800">Dispatch Form A (Single)</h3>
-            <button onclick="window.closeSingleModal()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <div class="space-y-4 pt-4">
+                <fieldset id="section_1" class="border border-gray-200 p-4 rounded-lg bg-gray-50">
+                    <legend class="text-xs font-bold uppercase tracking-wider text-gray-600 px-2 bg-white">First Party</legend>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <input type="text" id="name_1" class="border border-gray-300 p-2 rounded-md text-sm" placeholder="Name" required>
+                        <input type="email" id="email_1" class="border border-gray-300 p-2 rounded-md text-sm" placeholder="Email" required>
+                    </div>
+                </fieldset>
+
+                <fieldset id="section_2" class="border border-blue-200 p-4 rounded-lg bg-blue-50/30">
+                    <legend class="text-xs font-bold uppercase tracking-wider text-blue-700 px-2 bg-white">Second Party</legend>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <input type="text" id="name_2" class="border border-blue-300 p-2 rounded-md text-sm" placeholder="Name">
+                        <input type="email" id="email_2" class="border border-blue-300 p-2 rounded-md text-sm" placeholder="Email">
+                    </div>
+                </fieldset>
+
+                <fieldset id="section_3" class="border border-green-200 p-4 rounded-lg bg-green-50/30">
+                    <legend class="text-xs font-bold uppercase tracking-wider text-green-700 px-2 bg-white">Third Party</legend>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <input type="text" id="name_3" class="border border-green-300 p-2 rounded-md text-sm" placeholder="Name">
+                        <input type="email" id="email_3" class="border border-green-300 p-2 rounded-md text-sm" placeholder="Email">
+                    </div>
+                </fieldset>
+            </div>
+
+            <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition shadow-md">
+                Launch Workflow
+            </button>
+        </form>
+    </div>
+
+    <div id="tab-trace" class="hidden">
+        <div class="flex justify-between items-end mb-4">
+            <h2 class="text-2xl font-bold text-gray-800">Submission Trace</h2>
+            <button onclick="fetchSubmissionsFromAPI()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold transition">
+                Refresh Data
             </button>
         </div>
-        
-        <div class="space-y-5">
-            <div class="space-y-2">
-                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Document Naming</label>
-                <div class="relative">
-                    <input type="text" id="sinPrefix" placeholder="Project Name / Client ID" class="w-full pl-4 pr-24 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold">
-                    <span class="absolute right-4 top-3.5 text-xs text-gray-400 font-medium">Form A</span>
-                </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 flex flex-col md:flex-row gap-4">
+            <div class="flex-1">
+                <input type="text" id="filter_search" oninput="applyFilters()" placeholder="Search Document Name..." class="w-full border border-gray-300 p-2 rounded-md focus:ring-indigo-500 text-sm">
             </div>
-
-            <div class="border-t border-gray-100 my-2"></div>
-
-            <div class="space-y-3">
-                <label class="block text-xs font-black text-blue-600 uppercase tracking-wider">Electrical Specialist (ES)</label>
-                <div class="grid grid-cols-1 gap-3">
-                    <input type="text" id="sinNameES" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                    <input type="email" id="sinEmailES" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                </div>
+            <div class="w-full md:w-48">
+                <select id="filter_category" onchange="applyFilters()" class="w-full border border-gray-300 p-2 rounded-md text-sm focus:ring-indigo-500">
+                    <option value="All">All Categories</option>
+                    <option value="Internal">Internal Only</option>
+                    <option value="External">External Only</option>
+                </select>
             </div>
-        </div>
-
-        <div class="mt-8 flex flex-col space-y-3">
-            <button onclick="window.sendSingleRequest(event)" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Initiate Signature</button>
-            <button onclick="window.closeSingleModal()" class="w-full py-2 text-gray-400 font-medium hover:text-gray-600 text-sm">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<div id="dualModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center">
-    <div class="bg-white p-8 rounded-3xl shadow-2xl w-[500px] transform transition-all border border-gray-100">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-black text-gray-800">Dispatch Form A (Dual)</h3>
-            <button onclick="window.closeDualModal()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-        
-        <div class="space-y-5">
-            <div class="space-y-2">
-                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Document Naming</label>
-                <div class="relative">
-                    <input type="text" id="dualPrefix" placeholder="Project Name / Client ID" class="w-full pl-4 pr-24 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm font-bold">
-                    <span class="absolute right-4 top-3.5 text-xs text-gray-400 font-medium">Form A</span>
-                </div>
-            </div>
-
-            <div class="border-t border-gray-100 my-2"></div>
-
-            <div class="space-y-3">
-                <label class="block text-xs font-black text-evgreen uppercase tracking-wider">Step 1: ES</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="dualNameES" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
-                    <input type="email" id="dualEmailES" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-evgreen text-sm">
-                </div>
-            </div>
-
-            <div class="space-y-3">
-                <label class="block text-xs font-black text-gray-600 uppercase tracking-wider">Step 2: LEW</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="dualNameLEW" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
-                    <input type="email" id="dualEmailLEW" placeholder="Email Address" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-sm">
-                </div>
+            <div class="w-full md:w-48">
+                <select id="filter_form" onchange="applyFilters()" class="w-full border border-gray-300 p-2 rounded-md text-sm focus:ring-indigo-500">
+                    <option value="All">All Forms</option>
+                    <option value="Form A">Form A</option>
+                    <option value="Form D">Form D</option>
+                    <option value="Form 1">Form 1</option>
+                </select>
             </div>
         </div>
 
-        <div class="mt-8 flex flex-col space-y-3">
-            <button onclick="window.sendDualRequest(event)" class="w-full bg-evgreen text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-600 transition">Initiate Sequential Signature</button>
-            <button onclick="window.closeDualModal()" class="w-full py-2 text-gray-400 font-medium hover:text-gray-600 text-sm">Cancel</button>
+        <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Document Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="submissionList" class="divide-y divide-gray-200 text-sm">
+                    <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">Loading...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-{% endblock %}
+<script>
+// Global state for filtering
+let globalSubmissions = [];
 
-{% block extra_js %}
-window.onPageLoad = function() { };
-
-// --- Tab 切换 ---
-window.switchSignTab = function(tabName) {
-    const tabs = ['distribute', 'track'];
-    tabs.forEach(t => {
-        document.getElementById('sign-tab-' + t).classList.add('hidden');
-        document.getElementById('sign-tab-' + t).classList.remove('block');
-        document.getElementById('tab-btn-' + t).className = "pb-3 px-1 text-gray-500 hover:text-gray-700 font-medium text-sm transition";
-    });
-    document.getElementById('sign-tab-' + tabName).classList.remove('hidden');
-    document.getElementById('sign-tab-' + tabName).classList.add('block');
-    document.getElementById('tab-btn-' + tabName).className = "pb-3 px-1 text-evgreen border-b-2 border-evgreen font-medium text-sm transition";
-
-    if(tabName === 'track') window.loadSubmissions();
-};
-
-// --- Modal 控制 ---
-window.openSingleModal = function() { document.getElementById('singleModal').classList.remove('hidden'); };
-window.closeSingleModal = function() { document.getElementById('singleModal').classList.add('hidden'); };
-window.openDualModal = function() { document.getElementById('dualModal').classList.remove('hidden'); };
-window.closeDualModal = function() { document.getElementById('dualModal').classList.add('hidden'); };
-
-// --- 核心调度函数 (附带提取直接签署链接能力) ---
-window.executeDispatch = async function(btn, endpoint, payloadData, modalCloser) {
-    const originalText = btn.innerText;
-    btn.innerText = "Dispatching...";
-    btn.disabled = true;
-
-    try {
-        const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + localStorage.getItem('evone_token') 
-            },
-            body: JSON.stringify(payloadData)
-        });
-        
-        const result = await res.json();
-        
-        // 1. 如果后端直接提取出了签署链接 (绕过邮箱测试)
-        if(result.sign_links && Object.keys(result.sign_links).length > 0) { 
-            let msg = "✅ 创建成功！\n系统已提取出直接签署链接：\n";
-            if(result.sign_links.ES) msg += `\n[ES 签署入口]: \n${result.sign_links.ES}\n`;
-            if(result.sign_links.LEW) msg += `\n[LEW 签署入口]: \n${result.sign_links.LEW}\n`;
-            
-            alert(msg);
-            modalCloser(); 
-            window.switchSignTab('track'); 
-        } 
-        // 2. 正常 API 成功响应
-        else if (result.id || (Array.isArray(result) && result.length > 0 && result[0].id)) {
-            alert("✅ 派发成功！邮件已交由 DocuSeal 处理。");
-            modalCloser(); 
-            window.switchSignTab('track'); 
-        } 
-        // 3. API 抛出错误
-        else {
-            alert("❌ Dispatch Failed: " + (result.message || "Unknown Error."));
+async function getAuthHeaders() {
+    let token = null;
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            try { token = JSON.parse(localStorage.getItem(key)).access_token; break; } catch (e) {}
         }
-    } catch (e) {
-        alert("⚠️ Network Error: Unable to reach API.");
-    } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
+    }
+    if (!token) token = localStorage.getItem('supabase.auth.token') || localStorage.getItem('sb-access-token');
+    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+function switchTab(tab) {
+    const createTab = document.getElementById('tab-create');
+    const traceTab = document.getElementById('tab-trace');
+    const createBtn = document.getElementById('tab-create-btn');
+    const traceBtn = document.getElementById('tab-trace-btn');
+
+    if (tab === 'create') {
+        createTab.classList.replace('hidden', 'block');
+        traceTab.classList.replace('block', 'hidden');
+        createBtn.classList.add('border-indigo-600', 'text-indigo-600');
+        traceBtn.classList.remove('border-indigo-600', 'text-indigo-600');
+    } else {
+        traceTab.classList.replace('hidden', 'block');
+        createTab.classList.replace('block', 'hidden');
+        traceBtn.classList.add('border-indigo-600', 'text-indigo-600');
+        createBtn.classList.remove('border-indigo-600', 'text-indigo-600');
+        // Fetch fresh data when switching to trace
+        fetchSubmissionsFromAPI();
     }
 }
 
-// --- 发送 Form A (单人版) ---
-window.sendSingleRequest = async function(event) {
-    const data = {
-        prefix: document.getElementById('sinPrefix').value.trim(),
-        name_es: document.getElementById('sinNameES').value.trim(),
-        email_es: document.getElementById('sinEmailES').value.trim()
-    };
+function updateSignerOptions() {
+    const formType = document.getElementById('form_type').value;
+    const countSelect = document.getElementById('signers_count');
+    countSelect.innerHTML = '';
     
-    if(!data.name_es || !data.email_es) {
-        return alert("⚠️ Action Required: Please fill in the ES details.");
+    if (formType === 'Form A') {
+        countSelect.add(new Option('1 Person (First Party)', '1'));
+        countSelect.add(new Option('2 People (First + Second Party)', '2'));
+    } else {
+        countSelect.add(new Option('2 People (First + Second Party)', '2'));
+        countSelect.add(new Option('3 People (First + Second + Third Party)', '3'));
     }
-    
-    await window.executeDispatch(event.target, '/api/create-signature-form-a-single', data, window.closeSingleModal);
-    
-    // 清空输入
-    document.getElementById('sinPrefix').value = '';
-    document.getElementById('sinNameES').value = '';
-    document.getElementById('sinEmailES').value = '';
-};
+    toggleInputs();
+}
 
-// --- 发送 Form A (双人版) ---
-window.sendDualRequest = async function(event) {
-    const data = {
-        prefix: document.getElementById('dualPrefix').value.trim(),
-        name_es: document.getElementById('dualNameES').value.trim(),
-        email_es: document.getElementById('dualEmailES').value.trim(),
-        name_lew: document.getElementById('dualNameLEW').value.trim(),
-        email_lew: document.getElementById('dualEmailLEW').value.trim()
+function toggleInputs() {
+    const count = parseInt(document.getElementById('signers_count').value);
+    const show = (id, isVisible) => {
+        const el = document.getElementById(id);
+        el.style.display = isVisible ? 'block' : 'none';
+        el.querySelectorAll('input').forEach(i => isVisible ? i.setAttribute('required', 'required') : i.removeAttribute('required'));
     };
-    
-    if(!data.name_es || !data.email_es || !data.name_lew || !data.email_lew) {
-        return alert("⚠️ Action Required: Please fill in all fields for both ES and LEW.");
-    }
+    show('section_1', count >= 1);
+    show('section_2', count >= 2);
+    show('section_3', count >= 3);
+}
 
-    await window.executeDispatch(event.target, '/api/create-signature-form-a', data, window.closeDualModal);
-    
-    // 清空输入
-    document.getElementById('dualPrefix').value = '';
-    document.getElementById('dualNameES').value = '';
-    document.getElementById('dualEmailES').value = '';
-    document.getElementById('dualNameLEW').value = '';
-    document.getElementById('dualEmailLEW').value = '';
-};
+// --- Data Fetch & Filter Logic ---
 
-// --- 加载追踪记录 ---
-window.loadSubmissions = async function() {
-    const tbody = document.getElementById('submissionTableBody');
-    tbody.innerHTML = '<tr><td colspan="4" class="p-16 text-center text-gray-400 font-medium">Syncing history from DocuSeal...</td></tr>';
+async function fetchSubmissionsFromAPI() {
+    const tbody = document.getElementById('submissionList');
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500">Fetching data...</td></tr>`;
     
+    const headers = await getAuthHeaders();
     try {
-        const res = await fetch('/api/get-signing-submissions', {
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('evone_token') }
-        });
-        const payload = await res.json();
-        const records = Array.isArray(payload) ? payload : (payload.data || []);
+        const res = await fetch('/api/get-signing-submissions?t=' + new Date().getTime(), { headers });
+        const rawData = await res.json();
+        globalSubmissions = Array.isArray(rawData) ? rawData : (rawData.data || []);
+        applyFilters(); // Apply current filters immediately
+    } catch(e) { 
+        console.error(e);
+        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-red-500">Network Error.</td></tr>`;
+    }
+}
+
+function applyFilters() {
+    const searchText = document.getElementById('filter_search').value.toLowerCase();
+    const catFilter = document.getElementById('filter_category').value;
+    const formFilter = document.getElementById('filter_form').value;
+
+    const filteredData = globalSubmissions.filter(item => {
+        const docName = item.name || '';
+        const nameLower = docName.toLowerCase();
+
+        // 1. Text Search Filter
+        if (searchText && !nameLower.includes(searchText)) return false;
+
+        // 2. Category Filter (Check for [Internal] or [External])
+        if (catFilter !== 'All') {
+            if (!docName.includes(`[${catFilter}]`)) return false;
+        }
+
+        // 3. Form Type Filter
+        if (formFilter !== 'All') {
+            if (!docName.includes(formFilter)) return false;
+        }
+
+        return true;
+    });
+
+    renderTable(filteredData);
+}
+
+function renderTable(dataArray) {
+    const tbody = document.getElementById('submissionList');
+    tbody.innerHTML = '';
+    
+    if(dataArray.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">No matching documents found.</td></tr>`;
+        return;
+    }
+
+    dataArray.forEach(item => {
+        const statusColor = item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
+        const rawName = item.name || 'Unnamed Document';
         
-        tbody.innerHTML = '';
-        if(records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="p-16 text-center text-gray-400 italic">No records found. Start by distributing a request.</td></tr>';
-            return;
+        // 提取类别，以渲染漂亮的徽章 (Badge)
+        let badgeHTML = '';
+        let cleanName = rawName;
+        if (rawName.includes('[Internal]')) {
+            badgeHTML = `<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold mr-2">Internal</span>`;
+            cleanName = rawName.replace('[Internal]', '').trim();
+        } else if (rawName.includes('[External]')) {
+            badgeHTML = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold mr-2">External</span>`;
+            cleanName = rawName.replace('[External]', '').trim();
         }
 
-        records.forEach(item => {
-            const isDone = item.status === 'completed';
-            const statusLabel = isDone ? 'COMPLETED' : (item.status ? item.status.replace('_', ' ').toUpperCase() : 'PENDING');
-            const statusColor = isDone ? 'text-green-600 bg-green-50' : 'text-orange-500 bg-orange-50';
-            
-            // 优先使用自定义名称
-            const docName = item.name || (item.template && item.template.name) || 'Document Request';
-            
-            // 格式化时间戳 (新加坡时间)
-            const distTime = item.created_at ? new Date(item.created_at).toLocaleString('en-SG', {
-                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
-            }) : '--';
-            
-            let row = '<tr class="border-b border-gray-100 hover:bg-gray-50/50 transition">';
-            row += '<td class="px-6 py-5">';
-            row += '<div class="font-bold text-gray-700">' + docName + '</div>';
-            row += '<div class="text-[10px] text-gray-400 mt-1">Ref ID: ' + item.id + '</div></td>';
-            
-            // 插入 Distribution Time
-            row += '<td class="px-6 py-5 text-gray-500 text-xs">' + distTime + '</td>';
-            
-            row += '<td class="px-6 py-5"><span class="px-2 py-1 rounded text-[10px] font-black ' + statusColor + '">' + statusLabel + '</span></td>';
-            row += '<td class="px-6 py-5 text-right">';
-            
-            if(isDone) {
-                row += '<button onclick="window.downloadDoc(\'' + item.id + '\')" class="text-evgreen font-bold text-sm hover:underline">Download PDF</button>';
-            } else {
-                row += '<span class="text-gray-300 italic text-xs">Signing...</span>';
-            }
-            
-            row += '</td></tr>';
-            tbody.innerHTML += row;
-        });
-    } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-16 text-center text-red-400 font-bold">Data fetch error. Check connection.</td></tr>';
-    }
-};
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 font-medium text-gray-900 flex items-center">${badgeHTML} ${cleanName}</td>
+                <td class="px-6 py-4"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${statusColor}">${(item.status || 'unknown').toUpperCase()}</span></td>
+                <td class="px-6 py-4 text-gray-500 text-sm">${item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
+                <td class="px-6 py-4 text-right">
+                    <button onclick="downloadAndSync('${item.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold transition">Sync & View</button>
+                </td>
+            </tr>`;
+    });
+}
 
-// --- 下载 PDF ---
-window.downloadDoc = async function(subId) {
+// --- Sync & Form Submit ---
+
+async function downloadAndSync(subId) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`/api/get-document-download/${subId}`, { headers });
+    const result = await res.json();
+    if (result.download_url) {
+        window.open(result.download_url, '_blank');
+        alert('Document Synced to Supabase Storage Successfully.');
+    } else { alert('Error: ' + (result.message || 'Processing...')); }
+}
+
+document.getElementById('signForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const headers = await getAuthHeaders();
+    
+    const count = document.getElementById('signers_count').value;
+    
+    // Add category to payload
+    const payload = {
+        category: document.getElementById('category').value,
+        form_type: document.getElementById('form_type').value,
+        signers_count: count,
+        prefix: document.getElementById('prefix').value,
+        name_inspector: '', email_inspector: '',
+        name_es: '', email_es: '',
+        name_lew: '', email_lew: ''
+    };
+
+    const n1 = document.getElementById('name_1').value;
+    const e1 = document.getElementById('email_1').value;
+    const n2 = document.getElementById('name_2').value;
+    const e2 = document.getElementById('email_2').value;
+    const n3 = document.getElementById('name_3').value;
+    const e3 = document.getElementById('email_3').value;
+
+    if (count === '1') {
+        payload.name_es = n1; payload.email_es = e1;
+    } else if (count === '2') {
+        payload.name_es = n1; payload.email_es = e1;
+        payload.name_lew = n2; payload.email_lew = e2;
+    } else if (count === '3') {
+        payload.name_inspector = n1; payload.email_inspector = e1;
+        payload.name_es = n2; payload.email_es = e2;
+        payload.name_lew = n3; payload.email_lew = e3;
+    }
+
     try {
-        const res = await fetch('/api/get-document-download/' + subId, {
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('evone_token') }
-        });
-        const data = await res.json();
-        if(data.download_url) {
-            window.open(data.download_url, '_blank');
-        } else {
-            alert("下载失败: " + (data.message || "未找到链接。"));
-        }
-    } catch (e) { 
-        alert("下载请求异常。"); 
-    }
-};
+        const res = await fetch('/api/create-signature', { method: 'POST', headers, body: JSON.stringify(payload) });
+        const result = await res.json();
+        if (!result.error) {
+            alert('Workflow Successfully Created!');
+            document.getElementById('signForm').reset();
+            updateSignerOptions();
+        } else { alert('Submission Failed: ' + result.message); }
+    } catch (err) { alert('Network or server error during submission.'); }
+});
+
+updateSignerOptions();
+</script>
 {% endblock %}
