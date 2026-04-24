@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-6 max-w-6xl">
+    
+    <div class="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Document Center</h2>
+        <span id="roleBadge" class="hidden px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+            Checking Role...
+        </span>
+    </div>
+
+    <div id="uploadSection" class="hidden mb-8 bg-white p-6 shadow-sm rounded-xl border border-dashed border-gray-300">
+        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            Upload New Document
+        </h3>
+        <form id="uploadForm" class="flex items-center gap-4">
+            <input type="file" id="fileInput" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition" required>
+            <button type="submit" id="uploadBtn" class="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md whitespace-nowrap">
+                Upload File
+            </button>
+        </form>
+        <div id="uploadStatus" class="mt-2 text-sm font-medium hidden"></div>
+    </div>
+
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
+        
+        <div class="p-4 bg-gray-50 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h3 class="font-bold text-gray-700 whitespace-nowrap">Available Files</h3>
+            
+            <div class="flex-1 w-full max-w-md relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input type="text" id="searchInput" oninput="filterFiles()" placeholder="Search by document name..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition">
+            </div>
+
+            <button onclick="loadFiles()" class="text-sm text-indigo-600 hover:text-indigo-800 font-bold transition whitespace-nowrap">Refresh</button>
+        </div>
+
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-white">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">File Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Size</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Modified</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                </tr>
+            </thead>
+            <tbody id="fileList" class="divide-y divide-gray-100 text-sm bg-white">
+                <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">Loading files...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+// --- 核心改动 1：设定全局变量存储文件 ---
+let allFiles = [];
+
+async function getAuthHeaders(isFileUpload = false) {
+    let token = null;
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            try { token = JSON.parse(localStorage.getItem(key)).access_token; break; } catch (e) {}
+        }
+    }
+    if (!token) token = localStorage.getItem('supabase.auth.token') || localStorage.getItem('sb-access-token');
+    
+    const headers = { 'Authorization': `Bearer ${token}` };
+    if (!isFileUpload) headers['Content-Type'] = 'application/json';
+    return headers;
+}
+
+function formatBytes(bytes, decimals = 2) {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024, dm = decimals < 0 ? 0 : decimals, sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+// --- 核心改动 2：获取数据并保存到全局变量 ---
+async function loadFiles() {
+    const tbody = document.getElementById('fileList');
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500">Fetching documents...</td></tr>`;
+    
+    try {
+        const headers = await getAuthHeaders();
+        const res = await fetch('/api/list-files?t=' + new Date().getTime(), { headers });
+        
+        if (!res.ok) throw new Error("Auth failed or Server error");
+        
+        const data = await res.json();
+        
+        // RBAC UI 渲染
+        const roleBadge = document.getElementById('roleBadge');
+        roleBadge.classList.remove('hidden');
+        if (data.is_admin) {
+            document.getElementById('uploadSection').classList.remove('hidden');
+            roleBadge.textContent = 'Admin Mode';
+            roleBadge.classList.replace('bg-gray-100', 'bg-indigo-100');
+            roleBadge.classList.replace('text-gray-600', 'text-indigo-700');
+        } else {
+            document.getElementById('uploadSection').classList.add('hidden');
+            roleBadge.textContent = 'Read-Only Mode';
+            roleBadge.classList.replace('bg-gray-100', 'bg-green-100');
+            roleBadge.classList.replace('text-gray-600', 'text-green-700');
+        }
+
+        // 保存到全局变量并清空搜索框
+        allFiles = data.files || [];
+        document.getElementById('searchInput').value = ''; 
+        renderFiles(allFiles);
+
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-red-500 font-bold">Failed to load files.</td></tr>`;
+    }
+}
+
+// --- 核心改动 3：剥离出的独立渲染函数 ---
+function renderFiles(filesToRender) {
+    const tbody = document.getElementById('fileList');
+    tbody.innerHTML = '';
+    
+    if(filesToRender.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">No matching documents found.</td></tr>`;
+        return;
+    }
+
+    filesToRender.forEach(f => {
+        const date = new Date(f.updated_at || f.created_at).toLocaleString();
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 font-medium text-gray-900 flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>
+                    ${f.name}
+                </td>
+                <td class="px-6 py-4 text-xs text-gray-500">${formatBytes(f.metadata?.size || 0)}</td>
+                <td class="px-6 py-4 text-xs text-gray-500">${date}</td>
+                <td class="px-6 py-4 text-right">
+                    <button onclick="downloadFile('${f.name}')" class="text-indigo-600 hover:text-indigo-900 font-bold text-xs bg-indigo-50 px-3 py-1.5 rounded transition">View / Download</button>
+                </td>
+            </tr>`;
+    });
+}
+
+// --- 核心改动 4：前端搜索过滤逻辑 ---
+function filterFiles() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filteredFiles = allFiles.filter(f => f.name.toLowerCase().includes(searchTerm));
+    renderFiles(filteredFiles);
+}
+
+// 预览文件逻辑 (保持不变)
+async function downloadFile(filename) {
+    try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/get-file-url/${encodeURIComponent(filename)}`, { headers });
+        const data = await res.json();
+        
+        if (data.url) {
+            window.open(data.url, '_blank');
+        } else {
+            alert("File access error.");
+        }
+    } catch (e) {
+        alert("Network error.");
+    }
+}
+
+// 上传逻辑 (保留了上一版修复的报错揭露机制)
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('fileInput');
+    const statusDiv = document.getElementById('uploadStatus');
+    const btn = document.getElementById('uploadBtn');
+    
+    if (fileInput.files.length === 0) return;
+    const file = fileInput.files[0];
+
+    if (file.size > 20 * 1024 * 1024) {
+        alert("File is too large. Limit is 20MB.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Uploading...';
+        statusDiv.classList.remove('hidden', 'text-red-600', 'text-green-600');
+        statusDiv.classList.add('text-gray-600');
+        statusDiv.textContent = 'Uploading to server...';
+
+        const headers = await getAuthHeaders(true); 
+        const res = await fetch('/api/upload-file', {
+            method: 'POST',
+            headers: headers,
+            body: formData
+        });
+
+        const data = await res.json();
+        
+        if (res.ok && !data.error) {
+            statusDiv.classList.replace('text-gray-600', 'text-green-600');
+            statusDiv.textContent = 'Upload successful!';
+            fileInput.value = ''; 
+            loadFiles(); // 成功后刷新列表
+        } else {
+            statusDiv.classList.remove('text-gray-600', 'text-green-600');
+            statusDiv.classList.add('text-red-600', 'font-bold');
+            statusDiv.textContent = 'Error: ' + (data.message || data.detail || 'Upload failed');
+        }
+    } catch (err) {
+        statusDiv.classList.replace('text-gray-600', 'text-red-600');
+        statusDiv.textContent = 'Network Error.';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload File';
+        setTimeout(() => statusDiv.classList.add('hidden'), 5000); 
+    }
+});
+
+// 初始化加载
+loadFiles();
+</script>
+{% endblock %}

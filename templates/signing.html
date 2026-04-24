@@ -102,18 +102,20 @@
             </div>
         </div>
 
-        <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
+        <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Document Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
-                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Action</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Document</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Recipients</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Signer Progress</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
                 <tbody id="submissionList" class="divide-y divide-gray-200 text-sm">
-                    <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">Loading...</td></tr>
+                    <tr><td colspan="6" class="px-6 py-10 text-center text-gray-400">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -152,7 +154,6 @@ function switchTab(tab) {
         createTab.classList.replace('block', 'hidden');
         traceBtn.classList.add('border-indigo-600', 'text-indigo-600');
         createBtn.classList.remove('border-indigo-600', 'text-indigo-600');
-        // Fetch fresh data when switching to trace
         fetchSubmissionsFromAPI();
     }
 }
@@ -185,20 +186,19 @@ function toggleInputs() {
 }
 
 // --- Data Fetch & Filter Logic ---
-
 async function fetchSubmissionsFromAPI() {
     const tbody = document.getElementById('submissionList');
-    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-500">Fetching data...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-gray-500">Fetching data...</td></tr>`;
     
     const headers = await getAuthHeaders();
     try {
         const res = await fetch('/api/get-signing-submissions?t=' + new Date().getTime(), { headers });
         const rawData = await res.json();
         globalSubmissions = Array.isArray(rawData) ? rawData : (rawData.data || []);
-        applyFilters(); // Apply current filters immediately
+        applyFilters(); 
     } catch(e) { 
         console.error(e);
-        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-red-500">Network Error.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-red-500">Network Error. Check console.</td></tr>`;
     }
 }
 
@@ -211,18 +211,9 @@ function applyFilters() {
         const docName = item.name || '';
         const nameLower = docName.toLowerCase();
 
-        // 1. Text Search Filter
         if (searchText && !nameLower.includes(searchText)) return false;
-
-        // 2. Category Filter (Check for [Internal] or [External])
-        if (catFilter !== 'All') {
-            if (!docName.includes(`[${catFilter}]`)) return false;
-        }
-
-        // 3. Form Type Filter
-        if (formFilter !== 'All') {
-            if (!docName.includes(formFilter)) return false;
-        }
+        if (catFilter !== 'All' && !docName.includes(`[${catFilter}]`)) return false;
+        if (formFilter !== 'All' && !docName.includes(formFilter)) return false;
 
         return true;
     });
@@ -230,44 +221,75 @@ function applyFilters() {
     renderTable(filteredData);
 }
 
+// --- 数据渲染逻辑 (融合了邮箱与进度) ---
+// --- 数据渲染逻辑 (融合了邮箱与进度) ---
 function renderTable(dataArray) {
     const tbody = document.getElementById('submissionList');
     tbody.innerHTML = '';
     
     if(dataArray.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">No matching documents found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-gray-400">No matching documents found.</td></tr>`;
         return;
     }
 
     dataArray.forEach(item => {
-        const statusColor = item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
+        // 1. 获取 submitters 并强制执行固定的优先级排序
+        // 优先级: Inspector(1) -> ES(2) -> LEW(3)，彻底无视 DocuSeal 的完成状态排序
+        let submitters = item.submitters || [];
+        const roleRank = { 'Inspector': 1, 'ES': 2, 'LEW': 3 };
+        submitters.sort((a, b) => (roleRank[a.role] || 99) - (roleRank[b.role] || 99));
+
+        // 此时邮箱也会按照 First/Second/Third 的顺序排列
+        const emails = submitters.map(s => s.email).join('<br>');
+        
+        // 2. 动态文案映射
+        const partyNames = ["First Party", "Second Party", "Third Party"];
+        
+        const progressHTML = submitters.map((s, index) => {
+            let dotColor = "text-gray-400"; 
+            if (s.status === 'completed') dotColor = "text-green-500";
+            if (s.status === 'viewed') dotColor = "text-blue-500";
+            if (s.status === 'declined') dotColor = "text-red-500";
+            
+            // 按排序后的索引提取文案 (0=First, 1=Second, 2=Third)
+            const displayName = partyNames[index] || s.role;
+            
+            return `<div class="flex items-center space-x-1 text-[11px] mb-1">
+                        <span class="${dotColor} text-lg leading-none">●</span>
+                        <span class="text-gray-700 font-bold">${displayName}:</span>
+                        <span class="text-gray-500">${s.status || 'pending'}</span>
+                    </div>`;
+        }).join('');
+
+        const overallStatusColor = item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
         const rawName = item.name || 'Unnamed Document';
         
-        // 提取类别，以渲染漂亮的徽章 (Badge)
+        // 3. 提取类别生成 Badge
         let badgeHTML = '';
         let cleanName = rawName;
         if (rawName.includes('[Internal]')) {
-            badgeHTML = `<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold mr-2">Internal</span>`;
+            badgeHTML = `<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold mr-2">Int</span>`;
             cleanName = rawName.replace('[Internal]', '').trim();
         } else if (rawName.includes('[External]')) {
-            badgeHTML = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold mr-2">External</span>`;
+            badgeHTML = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold mr-2">Ext</span>`;
             cleanName = rawName.replace('[External]', '').trim();
         }
 
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
-                <td class="px-6 py-4 font-medium text-gray-900 flex items-center">${badgeHTML} ${cleanName}</td>
-                <td class="px-6 py-4"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${statusColor}">${(item.status || 'unknown').toUpperCase()}</span></td>
-                <td class="px-6 py-4 text-gray-500 text-sm">${item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
+                <td class="px-6 py-4 font-medium text-gray-900"><div class="flex items-center">${badgeHTML} ${cleanName}</div></td>
+                <td class="px-6 py-4 text-[11px] text-gray-500 leading-relaxed">${emails || '-'}</td>
+                <td class="px-6 py-4">${progressHTML || '-'}</td>
+                <td class="px-6 py-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${overallStatusColor}">${(item.status || 'unknown').toUpperCase()}</span></td>
+                <td class="px-6 py-4 text-gray-500 text-xs">${item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
                 <td class="px-6 py-4 text-right">
-                    <button onclick="downloadAndSync('${item.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold transition">Sync & View</button>
+                    <button onclick="downloadAndSync('${item.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold text-xs transition">Sync & View</button>
                 </td>
             </tr>`;
     });
 }
 
 // --- Sync & Form Submit ---
-
 async function downloadAndSync(subId) {
     const headers = await getAuthHeaders();
     const res = await fetch(`/api/get-document-download/${subId}`, { headers });
@@ -284,7 +306,6 @@ document.getElementById('signForm').addEventListener('submit', async (e) => {
     
     const count = document.getElementById('signers_count').value;
     
-    // Add category to payload
     const payload = {
         category: document.getElementById('category').value,
         form_type: document.getElementById('form_type').value,

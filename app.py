@@ -6,6 +6,7 @@ import warnings
 import requests
 import pandas as pd
 from typing import List
+from datetime import datetime
 from dotenv import load_dotenv
 from jose import JWTError, jwt
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request
@@ -16,31 +17,11 @@ from fastapi.responses import Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import create_client, Client
 
-# ReportLab PDF 绘图库导入
+# ReportLab 绘图库
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-
-warnings.filterwarnings('ignore')
-load_dotenv()
-
-app = FastAPI(title="EVOne Internal System API")
-
-import os
-import requests
-from typing import List
-from datetime import datetime
-import warnings
-
-from dotenv import load_dotenv
-from jose import JWTError, jwt
-from fastapi import FastAPI, Depends, HTTPException, status, Request
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from supabase import create_client, Client
 
 warnings.filterwarnings('ignore')
 load_dotenv()
@@ -66,7 +47,7 @@ SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
 DOCUSEAL_API_KEY = os.environ.get("DOCUSEAL_API_KEY")
 DOCUSEAL_BASE = "https://api.docuseal.com"
 
-# Initialize Supabase Admin
+# 初始化 Supabase Admin (Service Role)
 supabase_admin: Client = create_client(
     os.environ.get("SUPABASE_URL"), 
     os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -80,9 +61,46 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     except JWTError:
         raise HTTPException(status_code=401, detail="Auth failed")
 
+def check_is_admin(user_payload: dict) -> bool:
+    """
+    RBAC 核心逻辑：基于 role_id 判定权限
+    1: Admin
+    2: Finance
+    3: Read Only
+    """
+    id = user_payload.get("sub")
+    if not id:
+        return False
+        
+    try:
+        # 将 schema 和 table 替换为你的真实表名
+        res = supabase_admin.schema("evone_billing").table("users") \
+            .select("role_id") \
+            .eq("id", id) \
+            .execute()
+        
+        if res.data and len(res.data) > 0:
+            current_role_id = res.data[0].get("role_id")
+            
+            # 【因果判定】
+            # 如果仅限 Admin (1) 可以上传文件：
+            return current_role_id == 1
+            
+            # 如果 Admin (1) 和 Finance (2) 都可以上传文件，请使用以下代码替换上一行：
+            # return current_role_id in [1, 2]
+            
+    except Exception as e:
+        print(f"RBAC Query Error: {e}")
+        
+    return False
+
 # ==========================================
-# 2. Config & Page Routes
+# 2. Page & Config Routes
 # ==========================================
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
+
 @app.get("/")
 async def serve_billing(request: Request):
     return templates.TemplateResponse(request=request, name="billing.html")
@@ -90,6 +108,10 @@ async def serve_billing(request: Request):
 @app.get("/e-sign")
 async def serve_signing(request: Request):
     return templates.TemplateResponse(request=request, name="signing.html")
+
+@app.get("/documents")
+async def serve_documents(request: Request):
+    return templates.TemplateResponse(request=request, name="files.html")
 
 @app.get("/config")
 async def get_config():
@@ -99,8 +121,49 @@ async def get_config():
     }
 
 # ==========================================
-# 3. Core API Logic
+# 3. Document Management API (RBAC)
 # ==========================================
+@app.get("/api/list-files")
+async def list_files(user: dict = Depends(get_current_user)):
+    try:
+        res = supabase_admin.storage.from_("Documents").list(path="general")
+        files = [f for f in res if f.get("name") and not f.get("name").startswith(".")]
+        return {
+            "is_admin": check_is_admin(user),
+            "files": files
+        }
+    except Exception as e:
+        return {"error": True, "message": str(e)}
+
+@app.post("/api/upload-file")
+async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    # 强制执行 RBAC 校验
+    if not check_is_admin(user):
+        raise HTTPException(status_code=403, detail="Admins only")
+    try:
+        file_bytes = await file.read()
+        safe_name = "".join([c for c in file.filename if c.isalnum() or c in (" ", "_", ".", "-")]).strip()
+        supabase_admin.storage.from_("Documents").upload(
+            path=f"general/{safe_name}",
+            file=file_bytes,
+            file_options={"content-type": file.content_type, "x-upsert": "true"}
+        )
+        return {"success": True}
+    except Exception as e:
+        return {"error": True, "message": str(e)}
+
+@app.get("/api/get-file-url/{filename}")
+async def get_file_url(filename: str, user: dict = Depends(get_current_user)):
+    try:
+        res = supabase_admin.storage.from_("Documents").create_signed_url(f"general/{filename}", 3600)
+        return {"url": res.get("signedURL")}
+    except Exception as e:
+        return {"error": True, "message": str(e)}
+
+# ==========================================
+# 4. E-Sign & Billing Logic (维持原样)
+# ==========================================
+# [此处接你代码中已有的 create_signature, get_submissions, process_pdf 等函数...]
 
 @app.post("/api/create-signature")
 async def create_signature(data: dict, user: dict = Depends(get_current_user)):
@@ -473,3 +536,7 @@ async def process_pdf(files: List[UploadFile] = File(...), user: dict = Depends(
         return Response(content=zip_buffer.getvalue(), media_type="application/zip", headers={"Content-Disposition": "attachment; filename=Monthly_PDF_Reports.zip"})
     except Exception as e:
         return {"error": True, "message": str(e)}
+
+@app.get("/analytics")
+async def serve_analytics(request: Request):
+    return templates.TemplateResponse(request=request, name="analytics.html")
