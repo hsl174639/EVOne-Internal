@@ -306,6 +306,29 @@ async def get_download(sub_id: str, user: dict = Depends(get_current_user)):
         return {"download_url": download_url}
     except Exception as e:
         return {"error": True, "message": str(e)}
+
+@app.post("/api/resend-signature/{submitter_id}")
+async def resend_signature(submitter_id: int, user: dict = Depends(get_current_user)):
+    headers = {
+        "X-Auth-Token": DOCUSEAL_API_KEY, 
+        "Content-Type": "application/json"
+    }
+    # 强制覆盖属性，触发内部邮件重发机制
+    payload = {"send_email": True}
+    
+    try:
+        response = requests.put(
+            f"{DOCUSEAL_BASE}/submitters/{submitter_id}", 
+            json=payload, 
+            headers=headers
+        )
+        if response.ok:
+            return {"success": True}
+            
+        error_msg = response.json().get("message", "DocuSeal rejected the request.")
+        return {"error": True, "message": error_msg}
+    except Exception as e:
+        return {"error": True, "message": str(e)}
 # ==========================================
 # 4. Billing 逻辑 (保持上传版本)
 # ==========================================

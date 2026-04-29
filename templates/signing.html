@@ -102,9 +102,9 @@
             </div>
         </div>
 
-        <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 overflow-x-auto">
+        <div class="bg-white shadow-lg rounded-xl border border-gray-100 max-h-[60vh] overflow-y-auto overflow-x-auto relative">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Document</th>
                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Recipients</th>
@@ -114,7 +114,7 @@
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
-                <tbody id="submissionList" class="divide-y divide-gray-200 text-sm">
+                <tbody id="submissionList" class="divide-y divide-gray-200 text-sm bg-white">
                     <tr><td colspan="6" class="px-6 py-10 text-center text-gray-400">Loading...</td></tr>
                 </tbody>
             </table>
@@ -123,7 +123,6 @@
 </div>
 
 <script>
-// Global state for filtering
 let globalSubmissions = [];
 
 async function getAuthHeaders() {
@@ -185,7 +184,6 @@ function toggleInputs() {
     show('section_3', count >= 3);
 }
 
-// --- Data Fetch & Filter Logic ---
 async function fetchSubmissionsFromAPI() {
     const tbody = document.getElementById('submissionList');
     tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-gray-500">Fetching data...</td></tr>`;
@@ -221,8 +219,6 @@ function applyFilters() {
     renderTable(filteredData);
 }
 
-// --- 数据渲染逻辑 (融合了邮箱与进度) ---
-// --- 数据渲染逻辑 (融合了邮箱与进度) ---
 function renderTable(dataArray) {
     const tbody = document.getElementById('submissionList');
     tbody.innerHTML = '';
@@ -233,16 +229,11 @@ function renderTable(dataArray) {
     }
 
     dataArray.forEach(item => {
-        // 1. 获取 submitters 并强制执行固定的优先级排序
-        // 优先级: Inspector(1) -> ES(2) -> LEW(3)，彻底无视 DocuSeal 的完成状态排序
         let submitters = item.submitters || [];
         const roleRank = { 'Inspector': 1, 'ES': 2, 'LEW': 3 };
         submitters.sort((a, b) => (roleRank[a.role] || 99) - (roleRank[b.role] || 99));
 
-        // 此时邮箱也会按照 First/Second/Third 的顺序排列
         const emails = submitters.map(s => s.email).join('<br>');
-        
-        // 2. 动态文案映射
         const partyNames = ["First Party", "Second Party", "Third Party"];
         
         const progressHTML = submitters.map((s, index) => {
@@ -251,20 +242,25 @@ function renderTable(dataArray) {
             if (s.status === 'viewed') dotColor = "text-blue-500";
             if (s.status === 'declined') dotColor = "text-red-500";
             
-            // 按排序后的索引提取文案 (0=First, 1=Second, 2=Third)
             const displayName = partyNames[index] || s.role;
             
-            return `<div class="flex items-center space-x-1 text-[11px] mb-1">
-                        <span class="${dotColor} text-lg leading-none">●</span>
-                        <span class="text-gray-700 font-bold">${displayName}:</span>
+            // Re-send 按钮注入逻辑
+            let resendBtn = '';
+            if (s.status !== 'completed' && s.status !== 'declined') {
+                resendBtn = `<button onclick="resendEmail(${s.id}, this)" class="ml-2 px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-[9px] font-bold transition whitespace-nowrap border border-gray-200">Re-send</button>`;
+            }
+            
+            return `<div class="flex items-center text-[11px] mb-1">
+                        <span class="${dotColor} text-lg leading-none mr-1">●</span>
+                        <span class="text-gray-700 font-bold mr-1">${displayName}:</span>
                         <span class="text-gray-500">${s.status || 'pending'}</span>
+                        ${resendBtn}
                     </div>`;
         }).join('');
 
         const overallStatusColor = item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
         const rawName = item.name || 'Unnamed Document';
         
-        // 3. 提取类别生成 Badge
         let badgeHTML = '';
         let cleanName = rawName;
         if (rawName.includes('[Internal]')) {
@@ -282,14 +278,46 @@ function renderTable(dataArray) {
                 <td class="px-6 py-4">${progressHTML || '-'}</td>
                 <td class="px-6 py-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${overallStatusColor}">${(item.status || 'unknown').toUpperCase()}</span></td>
                 <td class="px-6 py-4 text-gray-500 text-xs">${item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
-                <td class="px-6 py-4 text-right">
+                <td class="px-6 py-4 text-right whitespace-nowrap">
                     <button onclick="downloadAndSync('${item.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold text-xs transition">Sync & View</button>
                 </td>
             </tr>`;
     });
 }
 
-// --- Sync & Form Submit ---
+// Re-send 邮件触发与防御逻辑
+async function resendEmail(submitterId, btnElement) {
+    btnElement.disabled = true;
+    const originalText = btnElement.innerText;
+    btnElement.innerText = "Sending...";
+    btnElement.classList.add("opacity-50", "cursor-not-allowed");
+
+    try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/resend-signature/${submitterId}`, {
+            method: 'POST',
+            headers: headers
+        });
+        const data = await res.json();
+
+        if (res.ok && !data.error) {
+            btnElement.innerText = "Sent!";
+            btnElement.classList.replace("text-gray-600", "text-green-600");
+            btnElement.classList.replace("bg-gray-100", "bg-green-50");
+        } else {
+            alert("Resend failed: " + (data.message || "Unknown error from DocuSeal"));
+            btnElement.innerText = originalText;
+            btnElement.disabled = false;
+            btnElement.classList.remove("opacity-50", "cursor-not-allowed");
+        }
+    } catch (e) {
+        alert("Network Error: Cannot connect to internal server.");
+        btnElement.innerText = originalText;
+        btnElement.disabled = false;
+        btnElement.classList.remove("opacity-50", "cursor-not-allowed");
+    }
+}
+
 async function downloadAndSync(subId) {
     const headers = await getAuthHeaders();
     const res = await fetch(`/api/get-document-download/${subId}`, { headers });

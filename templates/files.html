@@ -28,30 +28,30 @@
         
         <div class="p-4 bg-gray-50 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
             <h3 class="font-bold text-gray-700 whitespace-nowrap">Available Files</h3>
-            
             <div class="flex-1 w-full max-w-md relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
                 <input type="text" id="searchInput" oninput="filterFiles()" placeholder="Search by document name..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition">
             </div>
-
             <button onclick="loadFiles()" class="text-sm text-indigo-600 hover:text-indigo-800 font-bold transition whitespace-nowrap">Refresh</button>
         </div>
 
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-white">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">File Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Size</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Modified</th>
-                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-            </thead>
-            <tbody id="fileList" class="divide-y divide-gray-100 text-sm bg-white">
-                <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">Loading files...</td></tr>
-            </tbody>
-        </table>
+        <div class="max-h-[60vh] overflow-y-auto overflow-x-auto relative">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">File Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Size</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Modified</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="fileList" class="divide-y divide-gray-100 text-sm bg-white">
+                    <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">Loading files...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
 </div>
